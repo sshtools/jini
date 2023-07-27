@@ -1,6 +1,6 @@
 # jini
 
-![Build](https://github.com/sshtools/jini/blob/main/.github/workflows/maven.yml/badge.svg)
+[![Maven Build/Test JDK 17](https://github.com/sshtools/jini/actions/workflows/maven.yml/badge.svg)](https://github.com/sshtools/jini/actions/workflows/maven.yml)
 
 A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_file) files. 
  
