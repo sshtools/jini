@@ -22,12 +22,15 @@ import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -69,7 +72,7 @@ public class INI extends AbstractData {
         }
         
         public INI build() {
-            return new INI(INIReader.createPropertyMap(preserveOrder, caseInsensitiveKeys), INIReader.createSectionMap(preserveOrder, caseInsensitiveSections));
+            return new INI(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections);
         }
     }
     
@@ -157,11 +160,46 @@ public class INI extends AbstractData {
 
 	public final static class Section extends AbstractData {
 		private final String key;
+        private final Optional<Data> parent;
 
-		Section(String key, Map<String, String[]> values, Map<String, Section[]> sections) {
-			super(values, sections);
+		Section(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsenstiveSections, Data parent, String key) {
+			super(preserveOrder, caseInsensitiveKeys, caseInsenstiveSections);
+			this.parent = Optional.of(parent);
 			this.key = key;
 		}
+		
+		public void remove() {
+		    parent.orElseThrow(() -> new IllegalStateException("Has no parent")).remove(this);
+		}
+		
+		public Section parent() {
+		    return parentOr().orElseThrow(() -> new IllegalStateException("Has no parent."));
+		}
+
+        public String[] path() {
+
+            var s = this;
+            var l = new ArrayList<String>(Arrays.asList(key()));
+            while(s.parentOr().isPresent()) {
+                s = s.parent();             
+                l.add(s.key());
+            }
+            return l.toArray(new String[0]);
+        }
+		
+		public Section[] parents() {
+		    var s = this;
+            var l = new ArrayList<Section>();
+		    while(s.parentOr().isPresent()) {
+		        s = s.parent();		        
+		        l.add(s);
+		    }
+		    return l.toArray(new Section[0]);
+		}
+		
+        public Optional<Section> parentOr() {
+            return parent.get() instanceof Section ? parent.map(d ->(Section)d) : Optional.empty();
+        }
 
 		public String key() {
 			return key;
@@ -178,8 +216,13 @@ public class INI extends AbstractData {
 
 	}
 
-	INI(Map<String, String[]> values, Map<String, Section[]> sections) {
-		super(values, sections);
+	INI(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
+            Map<String, String[]> values, Map<String, Section[]> sections) {
+        super(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections);
+    }
+
+    INI(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsenstiveSections) {
+		super(preserveOrder, caseInsensitiveKeys, caseInsenstiveSections);
 	}
 
 	@Override

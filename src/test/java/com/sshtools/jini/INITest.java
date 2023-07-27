@@ -29,6 +29,35 @@ import java.text.ParseException;
 import java.util.Arrays;
 
 public class INITest {
+
+    @Test
+    public void testCreateAndDeleteSections() throws IOException, ParseException {
+        var ini = INI.create();
+        
+        var sec1 = ini.create("Section1");
+        assertEquals(1, ini.sections().size());
+        assertEquals("Section1", sec1.key());
+        assertEquals("Section1", ini.section("Section1").key());
+        
+        var sec2 = sec1.create("Section2");
+        assertEquals(1, ini.sections().size());
+        assertEquals(1, sec1.sections().size());
+        assertEquals("Section2", sec2.key());
+        assertEquals("Section2", sec1.section("Section2").key());
+        
+        var sec3 = ini.create("Section1", "Section2", "Section3");
+        assertEquals(1, ini.sections().size());
+        assertEquals(1, sec1.sections().size());
+        assertEquals("Section3", sec3.key());
+        assertEquals("Section3", sec2.section("Section3").key());
+        sec2.create("Section3a");
+        assertEquals(2, sec2.sections().size());
+        
+        var sec4 = ini.create("Section1a", "Section2", "Section4");
+        assertEquals(2, ini.sections().size());
+        assertEquals(2, sec2.sections().size());
+        assertEquals("Section4", sec4.key());
+    }
     
     @Test
     public void testAllSections() throws IOException, ParseException {
@@ -47,7 +76,37 @@ public class INITest {
     }
 
     @Test
-    public void testTypes() throws IOException, ParseException {
+    public void testPutTypes() {
+        var ini = INI.create();
+        ini.put("A_String", "HelloWorld!"); 
+        ini.put("A_Boolean", true);
+        ini.put("An_Integer", 12);
+        ini.put("A_Float", 456.789f);
+        ini.put("A_Long", 12345678901234l);
+        ini.put("A_Double", 12345678901234.12345678901234);
+        ini.put("A_Short", (short)345);
+        ini.putAll("A_Boolean_ARRAY", true, false, true, false);
+        ini.putAll("An_Integer_ARRAY", 1,2,3,4,5);
+        ini.putAll("A_Float_ARRAY", 111.222f,777.333f,898.676f);
+        ini.putAll("A_Long_ARRAY", 345457856321234l, 923234568524587l, 675621354569053l, 679452356886031l);
+        ini.putAll("A_Double_ARRAY", 34436346234235.2323423423525, 789784563235345.589344583458, 91298234782345.13264136);
+        ini.putAll("A_Short_ARRAY", (short)789, (short)2121, (short)343, (short)4346, (short)5111);
+        ini.putAll("A_String_ARRAY", "ABCDEFGHIJKLM", "NOPQRSTUVWXYZ", "abcdefghijklm", "nopqrstuvwxyz");
+        assertTypes(ini);
+        
+        /* For coverage */
+        ini.putBoolean("A_Boolean_ARRAY", Arrays.asList(true, false, true, false));
+        ini.putInt("An_Integer_ARRAY", Arrays.asList(1,2,3,4,5));
+        ini.putFloat("A_Float_ARRAY", Arrays.asList(111.222f,777.333f,898.676f));
+        ini.putLong("A_Long_ARRAY", Arrays.asList(345457856321234l, 923234568524587l, 675621354569053l, 679452356886031l));
+        ini.putDouble("A_Double_ARRAY", Arrays.asList(34436346234235.2323423423525, 789784563235345.589344583458, 91298234782345.13264136));
+        ini.putShort("A_Short_ARRAY", Arrays.asList((short)789, (short)2121, (short)343, (short)4346, (short)5111));
+        ini.put("A_String_ARRAY", Arrays.asList("ABCDEFGHIJKLM", "NOPQRSTUVWXYZ", "abcdefghijklm", "nopqrstuvwxyz"));
+        assertTypes(ini);
+    }
+    
+    @Test
+    public void testGetTypes() throws IOException, ParseException {
         var ini = new INIReader.Builder().withoutNestedSections().withDuplicateKeysAction(DuplicateAction.APPEND)
                 .build().read("""
                         A_String = HelloWorld!                        
@@ -87,6 +146,11 @@ public class INITest {
                         A_String_ARRAY = nopqrstuvwxyz
                         """);
 
+        assertTypes(ini);
+
+    }
+
+    protected void assertTypes(INI ini) {
         assertEquals("HelloWorld!", ini.get("A_String"));
         assertTrue(ini.getOr("A_Missing_String").isEmpty());
         assertEquals("ZZZZZ", ini.getOr("A_Missing_String", "ZZZZZ"));
@@ -152,6 +216,5 @@ public class INITest {
         assertTrue(ini.getAllOr("A_Missing_String_ARRAY").isEmpty());
         assertArrayEquals(new String[] { "zz", "xx" },
                 ini.getAllOr("A_Missing_String_ARRAY", new String[] { "zz", "xx" }));
-
     }
 }

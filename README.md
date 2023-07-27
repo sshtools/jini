@@ -40,5 +40,20 @@ And for writing an INI document ..
 
 ```java
     var ini = INI.create();
+    ini.put("Name", "Alice");
+    ini.put("Age", 34);
+    ini.put("Registered", false);
     
+    var sec = ini.create("Address");
+    sec.put("Street", "15 Stone Lane");
+    sec.put("Area", "");
+    sec.put("City", "Arbington");
+    sec.put("County", "Inishire");
+    sec.put("PostCode", "ABC 123");
+    
+    var wrt = new INIWriter.Builder().build();
+    
+    try(var out = Files.newBufferedWriter(Paths.get("data.ini"))) {
+        wrt.write(ini, out);
+    }
 ```

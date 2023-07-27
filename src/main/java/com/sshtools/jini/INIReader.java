@@ -211,6 +211,8 @@ public final class INIReader extends AbstractIO {
 		var rootSections = createSectionMap(preserveOrder, caseInsensitiveSections);
 		var globalProperties = createPropertyMap(preserveOrder, caseInsensitiveKeys);
 		Section section = null;
+
+        var ini = new INI(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, globalProperties, rootSections);
 		
 		while ( ( line = lineReader.readLine()) != null) {
 			offset += line.length();
@@ -362,6 +364,7 @@ public final class INIReader extends AbstractIO {
 					}
 				
 					var parent = rootSections;
+					Section lastSection = null;
 					
 					for(int i = 0 ; i < sectionPath.length; i++) {
 					    var sectionKey = sectionPath[i];
@@ -370,7 +373,7 @@ public final class INIReader extends AbstractIO {
     					var sectionsForKey = parent.get(sectionKey);
     					
     					if(last) {
-        					var newSection = new Section(sectionKey, createPropertyMap(preserveOrder, caseInsensitiveKeys), new HashMap<>());
+        					var newSection = new Section(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, lastSection == null ? ini : lastSection,  sectionKey);
         					if(sectionsForKey == null) {
         						/* Doesn't exist, just add */
                                 sectionsForKey = new Section[] {newSection};
@@ -404,7 +407,7 @@ public final class INIReader extends AbstractIO {
     					else {
     					    if(sectionsForKey == null) {
                                 /* Doesn't exist, just add */
-                                sectionsForKey = new Section[] {new Section(sectionKey, createPropertyMap(preserveOrder, caseInsensitiveKeys), new HashMap<>())};
+                                sectionsForKey = new Section[] {new Section(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, lastSection, sectionKey)};
                                 parent.put(sectionKey, sectionsForKey);
                             }
     					}
@@ -470,7 +473,7 @@ public final class INIReader extends AbstractIO {
 			}
 			
 		}
-		return new INI(globalProperties, rootSections);
+		return ini;
 	}
 	
 	private boolean isQuote(char ch) {
