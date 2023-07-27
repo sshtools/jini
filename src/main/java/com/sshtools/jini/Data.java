@@ -54,6 +54,16 @@ public interface Data {
         }
 
         @Override
+        public boolean containsKey(String key) {
+            return values.containsKey(key);
+        }
+
+        @Override
+        public boolean containsSection(String key) {
+            return sections.containsKey(key);
+        }
+
+        @Override
         public void remove(Section section) {
             var v = sections.get(section.key());
             if (v == null) {
@@ -164,6 +174,10 @@ public interface Data {
         return sectionOr(key)
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with key {0}", key)));
     }
+    
+    boolean containsKey(String key);
+    
+    boolean containsSection(String key);
 
     default void put(String key, String value) {
         putAll(key, value);
