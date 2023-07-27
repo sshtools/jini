@@ -1,6 +1,6 @@
 # jini
 
-A small Java library to read and write [https://en.wikipedia.org/wiki/INI_file](INI) files. 
+A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_file) files. 
  
  * Zero dependencies.
  * Configurable to be usable with most variants of the format.
