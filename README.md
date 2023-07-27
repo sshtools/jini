@@ -1,5 +1,7 @@
 # jini
 
+![Build](https://github.com/sshtools/jini/blob/main/.github/workflows/maven.yml/badge.svg)
+
 A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_file) files. 
  
  * Zero dependencies.
