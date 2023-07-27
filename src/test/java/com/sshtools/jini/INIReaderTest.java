@@ -15,12 +15,14 @@
  */
 package com.sshtools.jini;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sshtools.jini.INIReader.DuplicateAction;
+import com.sshtools.jini.INIReader.MultiValueMode;
 
 import org.junit.jupiter.api.Test;
 
@@ -196,6 +198,41 @@ public class INIReaderTest {
         assertEquals("S1S2Val1", sec2.get("S1S2Key1"));
         assertEquals(0, sec2.sections().size());
         System.out.println(ini);
+    }
+
+    @Test
+    public void testSeparatedMultiValueMode() throws Exception {
+        var ini = new INIReader.Builder().
+                withMultiValueMode(MultiValueMode.SEPARATED).
+                build().read("""
+                Key1 = Val1, Val2, Val3,Val4
+                """);
+        assertEquals(1, ini.values().size());
+        assertArrayEquals(new String[] {"Val1", "Val2", "Val3", "Val4"}, ini.getAll("Key1"));
+    }
+
+    @Test
+    public void testSeparatedMultiValueModeReplaces() throws Exception {
+        var ini = new INIReader.Builder().
+                withMultiValueMode(MultiValueMode.SEPARATED).
+                build().read("""
+                Key1 = Val1, Val2, Val3,Val4
+                Key1 = Val5
+                """);
+        assertEquals(1, ini.values().size());
+        assertArrayEquals(new String[] {"Val5"}, ini.getAll("Key1"));
+    }
+
+    @Test
+    public void testSeparatedMultiValueModeAltSeparator() throws Exception {
+        var ini = new INIReader.Builder().
+                withMultiValueMode(MultiValueMode.SEPARATED).
+                withMultiValueSeparator('/').
+                build().read("""
+                Key1 = Val1/ Val2/ Val3/Val4
+                """);
+        assertEquals(1, ini.values().size());
+        assertArrayEquals(new String[] {"Val1", "Val2", "Val3", "Val4"}, ini.getAll("Key1"));
     }
 
     @Test

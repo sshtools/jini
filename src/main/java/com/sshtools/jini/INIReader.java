@@ -39,6 +39,10 @@ public final class INIReader extends AbstractIO {
 	public enum DuplicateAction {
 		ABORT, IGNORE, REPLACE, MERGE, APPEND
 	}
+	
+	public enum MultiValueMode {
+	    REPEATED_KEY, SEPARATED
+	}
 
 	public static class Builder extends AbstractIOBuilder<Builder> {
 		private boolean globalSection = true;
@@ -62,7 +66,6 @@ public final class INIReader extends AbstractIO {
 			this.quoteCharacters = quoteCharacters;
 			return this;
 		}
-
 
 		public final Builder withoutParseExceptions() {
 			return withParseExceptions(false);
@@ -353,11 +356,7 @@ public final class INIReader extends AbstractIO {
 					
 					String[] sectionPath;
 					if(nestedSections) {
-    					var tkns = new StringTokenizer(key, String.valueOf(sectionPathSeparator));
-    					sectionPath = new String[tkns.countTokens()];
-    					for(var i = 0 ; tkns.hasMoreTokens(); i++) {
-    					    sectionPath[i] = tkns.nextToken();
-    					}
+					    sectionPath = tokenize(key, sectionPathSeparator);
 					}
 					else {
 					    sectionPath = new String[] { key };
@@ -446,10 +445,20 @@ public final class INIReader extends AbstractIO {
 						sectionProperties = section.values;
 					}
 					
+					String[] values;
+					if(multiValueMode == MultiValueMode.REPEATED_KEY) {
+					    values = new String[] { val };
+					}
+					else {
+					    values = tokenize(val, multiValueSeparator);
+					    if(trimmedValue)
+	                        values = trim(values);
+					}
+					
 					var valuesForKey = sectionProperties.get(key);
 					if(valuesForKey == null) {
 						/* Doesn't exist, just add */
-						sectionProperties.put(key, new String[] { val });
+						sectionProperties.put(key, values);
 					}
 					else {
 						switch(duplicateKeysAction) {
@@ -457,14 +466,14 @@ public final class INIReader extends AbstractIO {
 							throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
 						case MERGE:
 						case REPLACE:
-							sectionProperties.put(key, new String[] { val });
+							sectionProperties.put(key, values);
 							break;
 						case IGNORE:
                             continue;
 						case APPEND:
-							var newValues = new String[valuesForKey.length + 1];
+							var newValues = new String[valuesForKey.length + values.length];
 							System.arraycopy(valuesForKey, 0, newValues, 0, valuesForKey.length);
-							newValues[valuesForKey.length] = val;
+                            System.arraycopy(values, 0, newValues, valuesForKey.length, values.length);
 							sectionProperties.put(key, newValues);
 							break;
 						}
@@ -475,8 +484,8 @@ public final class INIReader extends AbstractIO {
 		}
 		return ini;
 	}
-	
-	private boolean isQuote(char ch) {
+
+    private boolean isQuote(char ch) {
 		for(var c : quoteCharacters)
 			if(c == ch)
 				return true;
@@ -493,6 +502,21 @@ public final class INIReader extends AbstractIO {
 		}
 		return contCount % 2 == 1;
 	}
+    
+    static String[] tokenize(String val, char sep) {
+        var tkns = new StringTokenizer(val, String.valueOf(sep));
+        var arr = new String[tkns.countTokens()];
+        for(var i = 0 ; tkns.hasMoreTokens(); i++) {
+            arr[i] = tkns.nextToken();
+        }
+        return arr;
+    }
+    
+    static String[] trim(String[] arr) {
+        for(int i = 0; i < arr.length; i++)
+            arr[i] = arr[i].trim();
+        return arr;
+    }
 	
 	static Map<String, Section[]> createSectionMap(boolean preserveOrder, boolean caseInsensitiveSections) {
 		if(preserveOrder) {

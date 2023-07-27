@@ -12,7 +12,8 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Line continuations
  * Configurable delimiters.
  * Configurable whitespace usage.
- * Supports various modes for handling of duplicate properties and sections.
+ * Multiple modes for handling of duplicate properties and sections.
+ * Multiple modes for handling of multi-value keys
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
@@ -30,7 +31,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>com.sshtools</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.4</version>
 </dependency>
     
 ```

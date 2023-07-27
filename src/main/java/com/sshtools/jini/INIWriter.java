@@ -25,6 +25,7 @@ import java.util.Stack;
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
 import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIReader.MultiValueMode;
 
 public class INIWriter extends AbstractIO {
 	
@@ -89,7 +90,7 @@ public class INIWriter extends AbstractIO {
 		}
 	}
 
-	String quote(String value) {
+	private String quote(String value) {
 		switch(stringQuoteMode) {
 		case NEVER:
 			return escape(value);
@@ -102,6 +103,13 @@ public class INIWriter extends AbstractIO {
 		return quoteCharacter + escape(value) + quoteCharacter;
 	}
 
+	private String[] quote(String[] values) {
+        for(int i = 0 ; i < values.length; i++) {
+            values[i] = quote(values[i]);
+        }
+        return values;
+    }
+
 	boolean needsQuote(String value) {
 		for(var c : new char[] {' ','\t',';'}) {
 			if(value.indexOf(c) != -1)
@@ -110,7 +118,7 @@ public class INIWriter extends AbstractIO {
 		return false;
 	}
 
-	String escape(String value) {
+	private String escape(String value) {
 		// TODO unicode
 		value = value.replace("\\", "\\\\");
 		value = value.replace("\r", "\\r");
@@ -128,7 +136,7 @@ public class INIWriter extends AbstractIO {
 		return value;
 	}
 
-	void writeSection(PrintWriter pw, Stack<String> path, String key, Section... values) {
+	private void writeSection(PrintWriter pw, Stack<String> path, String key, Section... values) {
 		path.push(key);
 		try {
 			if (values.length < 2) {
@@ -147,18 +155,30 @@ public class INIWriter extends AbstractIO {
 		}
 	}
 
-	void writeProperty(PrintWriter pw, String key, String... values) {
+	private void writeProperty(PrintWriter pw, String key, String... values) {
 		if (values.length == 0) {
 			pw.println(escape(key));
 		} else if (values.length == 1) {
-			if(valueSeparatorWhitespace)
-				pw.println(String.format("%s %s %s", escape(key), Character.valueOf(valueSeparator), quote(values[0])));
-			else
-				pw.println(String.format("%s%s%s", escape(key), Character.valueOf(valueSeparator), quote(values[0])));
+			writeOneProperty(pw, key, quote(values[0]));
 		} else {
-			for (var v : values)
-				writeProperty(pw, key, v);
+		    if(multiValueMode == MultiValueMode.REPEATED_KEY) {
+    			for (var v : values)
+    				writeProperty(pw, key, v);
+		    }
+		    else {
+		        if(trimmedValue)
+	                writeOneProperty(pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(values)));
+		        else
+		            writeOneProperty(pw, key, String.join(String.valueOf(multiValueSeparator), quote(values)));
+		    }
 		}
 	}
+
+    private void writeOneProperty(PrintWriter pw, String key, String value) {
+        if(valueSeparatorWhitespace)
+        	pw.println(String.format("%s %s %s", escape(key), Character.valueOf(valueSeparator), value));
+        else
+        	pw.println(String.format("%s%s%s", escape(key), Character.valueOf(valueSeparator), value));
+    }
 
 }

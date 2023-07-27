@@ -16,10 +16,15 @@
 package com.sshtools.jini;
 
 import com.sshtools.jini.Data.AbstractData;
+import com.sshtools.jini.INIReader.MultiValueMode;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.text.ParseException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -79,6 +84,35 @@ public class INI extends AbstractData {
     public static INI create() {
         return new INI.Builder().build();
     }
+    
+    public static INI fromFile(Path file) {
+        try(var in = Files.newBufferedReader(file)) {
+            return fromReader(in);
+        }
+        catch(IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        }
+    }
+    
+    public static INI fromReader(Reader reader) {
+        try {
+            return new INIReader.Builder().build().read(reader);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        } catch (ParseException e) {
+            throw new IllegalStateException("Failed to parse.", e);
+        }
+    }
+    
+    public static INI fromString(String content) {
+        try {
+            return new INIReader.Builder().build().read(content);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        } catch (ParseException e) {
+            throw new IllegalStateException("Failed to parse.", e);
+        }
+    }
 
 	static abstract class AbstractIO {
 
@@ -88,6 +122,8 @@ public class INI extends AbstractData {
 		protected final boolean lineContinuations;
 		protected final boolean valueSeparatorWhitespace;
 		protected final boolean trimmedValue;
+		protected final MultiValueMode multiValueMode;
+		protected final char multiValueSeparator;
 
 		AbstractIO(AbstractIOBuilder<?> builder) {
 			this.sectionPathSeparator = builder.sectionPathSeparator;
@@ -96,6 +132,8 @@ public class INI extends AbstractData {
 			this.lineContinuations = builder.lineContinuations;
 			this.valueSeparatorWhitespace = builder.valueSeparatorWhitespace;
 			this.trimmedValue = builder.trimmedValue;
+			this.multiValueMode = builder.multiValueMode;
+            this.multiValueSeparator = builder.multiValueSeparator;
 		}
 	}
 
@@ -107,6 +145,20 @@ public class INI extends AbstractData {
 		char valueSeparator = '=';
 		char commentCharacter = ';';
 		boolean trimmedValue = true;
+        MultiValueMode multiValueMode = MultiValueMode.REPEATED_KEY;
+        char multiValueSeparator = ',';
+
+        @SuppressWarnings("unchecked")
+        public final B withMultiValueMode(MultiValueMode multiValueMode) {
+            this.multiValueMode = multiValueMode;
+            return (B) this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public final B withMultiValueSeparator(char multiValueSeparator) {
+            this.multiValueSeparator = multiValueSeparator;
+            return (B) this;
+        }
 
 		@SuppressWarnings("unchecked")
 		public final B withSectionPathSeparator(char sectionPathSeparator) {
