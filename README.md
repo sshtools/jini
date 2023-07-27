@@ -1,6 +1,6 @@
 # jini
 
-[![Maven Build/Test JDK 17](https://github.com/sshtools/jini/actions/workflows/maven.yml/badge.svg)](https://github.com/sshtools/jini/actions/workflows/maven.yml)
+[![Maven Build/Test JDK 17](https://github.com/sshtools/jini/actions/workflows/maven.yml/badge.svg)](https://github.com/sshtools/jini/actions/workflows/maven.yml) https://maven-badges.herokuapp.com/maven-central/com.sshtools/jini/badge.svg?style=flat
 
 A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_file) files. 
  
@@ -15,10 +15,37 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
+ * Currently requires JDK 17 (may backport to Java 11 if there is any interest)
  
 ## WIP
 
  * Tests (84% coverage so far)
+ 
+## Installation
+
+Available on Maven Central, so just add the following dependency to your project's `pom.xml`.
+
+```xml
+<dependency>
+    <groupId>com.sshtools</groupId>
+    <artifactId>com.sshtools</artifactId>
+    <version>0.0.2</version>
+</dependency>
+    
+```
+
+### JPMS
+
+If you are using [JPMS](https://en.wikipedia.org/wiki/Java_Platform_Module_System), add `com.sshtools.jini` to your `module-info.java`.
+
+### Build From Source
+
+Using [Apache Maven](maven.apache.org/) is recommended.
+
+ * Clone this module
+ * Change directory to where you cloned to
+ * Run `mvn package`
+ * Jar Artifacts will be in the `target` directory.
  
 ## Usage
 
