@@ -3,7 +3,8 @@
 ![Maven Build/Test JDK 17](https://github.com/sshtools/jini/actions/workflows/maven.yml/badge.svg)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.sshtools/jini/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.sshtools/jini)
 [![Coverage Status](https://coveralls.io/repos/github/sshtools/jini/badge.svg)](https://coveralls.io/github/sshtools/jini)
-![Static Badge](https://img.shields.io/badge/JPMS-com.sshtools.jini-purple)
+[![javadoc](https://javadoc.io/badge2/com.sshtools/jini/javadoc.svg)](https://javadoc.io/doc/com.sshtools/jini)
+![JPMS](https://img.shields.io/badge/JPMS-com.sshtools.jini-purple) 
 
 A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_file) files. 
  
