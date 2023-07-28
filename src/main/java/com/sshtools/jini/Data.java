@@ -41,23 +41,23 @@ public interface Data {
         final Map<String, Section[]> sections;
         final Map<String, String[]> values;
         final boolean preserveOrder;
-        final boolean caseInsensitiveKeys;
-        final boolean caseInsensitiveSections;
+        final boolean caseSensitiveKeys;
+        final boolean caseSensitiveSections;
 
-        AbstractData(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
+        AbstractData(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
                 Map<String, String[]> values, Map<String, Section[]> sections) {
             super();
             this.sections = sections;
             this.values = values;
             this.preserveOrder = preserveOrder;
-            this.caseInsensitiveKeys = caseInsensitiveKeys;
-            this.caseInsensitiveSections = caseInsensitiveSections;
+            this.caseSensitiveKeys = caseSensitiveKeys;
+            this.caseSensitiveSections = caseSensitiveSections;
         }
 
-        AbstractData(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections) {
-            this(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections,
-                    INIReader.createPropertyMap(preserveOrder, caseInsensitiveKeys),
-                    INIReader.createSectionMap(preserveOrder, caseInsensitiveSections));
+        AbstractData(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections) {
+            this(preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+                    INIReader.createPropertyMap(preserveOrder, caseSensitiveKeys),
+                    INIReader.createSectionMap(preserveOrder, caseSensitiveSections));
         }
 
         @Override
@@ -151,12 +151,12 @@ public interface Data {
                 var name = path[i];
                 var existing = parent == null ? sections.get(name) : parent.sections.get(name);
                 if (existing == null) {
-                    newSection = new Section(preserveOrder, caseInsensitiveKeys, caseInsensitiveKeys,
+                    newSection = new Section(preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                             parent == null ? this : parent, name);
                     (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
                 } else {
                     if (last) {
-                        newSection = new Section(preserveOrder, caseInsensitiveKeys, caseInsensitiveKeys,
+                        newSection = new Section(preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                                 parent == null ? this : parent, name);
                         var newSections = new Section[existing.length + 1];
                         System.arraycopy(existing, 0, newSections, 0, existing.length);
@@ -575,15 +575,38 @@ public interface Data {
      */
     Section create(String... path);
 
+    /**
+     * Get a single string value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default String get(String key) {
         return getOr(key)
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No property with key {0}", key)));
     }
 
+    /**
+     * Get a single string value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default String getOr(String key, String defaultValue) {
         return getOr(key).orElse(defaultValue);
     }
 
+    /**
+     * Get a single string value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<String> getOr(String key) {
         var all = getAllOr(key);
         if (all.isEmpty())
@@ -597,163 +620,468 @@ public interface Data {
         }
     }
 
+    /**
+     * Get all string values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default String[] getAll(String key) {
         return getAllOr(key)
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No property with key {0}", key)));
     }
 
-    default String[] getAllOr(String key, String[] defaultValues) {
+    /**
+     * Get all string values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default String[] getAllOr(String key, String... defaultValues) {
         return getAllOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all string values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     Optional<String[]> getAllOr(String key);
 
+    /**
+     * Get a single double value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default double getDouble(String key) {
         return Double.parseDouble(get(key));
     }
 
+    /**
+     * Get a single double value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default double getDoubleOr(String key, double defaultValue) {
         return getOr(key).map(i -> Double.parseDouble(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single double value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Double> getDoubleOr(String key) {
         return getOr(key).map(i -> Double.parseDouble(i));
     }
 
+    /**
+     * Get all double values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default double[] getAllDouble(String key) {
         return Arrays.asList(getAll(key)).stream().mapToDouble(v -> Double.parseDouble(v)).toArray();
     }
 
-    default double[] getAllDoubleOr(String key, double[] defaultValues) {
+    /**
+     * Get all double values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default double[] getAllDoubleOr(String key, double... defaultValues) {
         return getAllDoubleOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all double values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<double[]> getAllDoubleOr(String key) {
         return getAllOr(key).map(s -> Arrays.asList(s).stream().mapToDouble(v -> Double.parseDouble(v)).toArray());
     }
 
+    /**
+     * Get a long value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default long getLong(String key) {
         return Long.parseLong(get(key));
     }
 
+    /**
+     * Get a single long value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default long getLongOr(String key, long defaultValue) {
         return getOr(key).map(i -> Long.parseLong(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single long value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Long> getLongOr(String key) {
         return getOr(key).map(i -> Long.parseLong(i));
     }
 
+    /**
+     * Get all long values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default long[] getAllLong(String key) {
         return Arrays.asList(getAll(key)).stream().mapToLong(v -> Long.parseLong(v)).toArray();
     }
 
-    default long[] getAllLongOr(String key, long[] defaultValues) {
+    /**
+     * Get all long values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default long[] getAllLongOr(String key, long... defaultValues) {
         return getAllLongOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all long values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<long[]> getAllLongOr(String key) {
         return getAllOr(key).map(s -> Arrays.asList(s).stream().mapToLong(v -> Long.parseLong(v)).toArray());
     }
 
+    /**
+     * Get an integer value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default int getInt(String key) {
         return Integer.parseInt(get(key));
     }
 
+    /**
+     * Get a single integer value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default int getIntOr(String key, int defaultValue) {
         return getOr(key).map(i -> Integer.parseInt(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single integer value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Integer> getIntOr(String key) {
         return getOr(key).map(i -> Integer.parseInt(i));
     }
 
+    /**
+     * Get all integer values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default int[] getAllInt(String key) {
         return Arrays.asList(getAll(key)).stream().mapToInt(v -> Integer.parseInt(v)).toArray();
     }
 
-    default int[] getAllIntOr(String key, int[] defaultValues) {
+    /**
+     * Get all integer values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default int[] getAllIntOr(String key, int... defaultValues) {
         return getAllIntOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all integer values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<int[]> getAllIntOr(String key) {
         return getAllOr(key).map(s -> Arrays.asList(s).stream().mapToInt(v -> Integer.parseInt(v)).toArray());
     }
 
-    default int getShort(String key) {
+    /**
+     * Get a short value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
+    default short getShort(String key) {
         return Short.parseShort(get(key));
     }
 
-    default int getShortOr(String key, short defaultValue) {
+    /**
+     * Get a single short value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
+    default short getShortOr(String key, short defaultValue) {
         return getOr(key).map(i -> Short.parseShort(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single short value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Short> getShortOr(String key) {
         return getOr(key).map(i -> Short.parseShort(i));
     }
 
+    /**
+     * Get all short values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default short[] getAllShort(String key) {
         return toPrimitiveShortArray(Arrays.asList(getAll(key)).stream().map(v -> Short.parseShort(v)).toArray());
     }
 
-    default short[] getAllShortOr(String key, short[] defaultValues) {
+    /**
+     * Get all short values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default short[] getAllShortOr(String key, short... defaultValues) {
         return getAllShortOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all short values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<short[]> getAllShortOr(String key) {
         var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Short.parseShort(v)).toArray());
         return arr.isEmpty() ? Optional.empty() : Optional.of(toPrimitiveShortArray(arr.get()));
     }
 
+    /**
+     * Get a float value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default float getFloat(String key) {
         return Float.parseFloat(get(key));
     }
 
+    /**
+     * Get a single float value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default float getFloatOr(String key, float defaultValue) {
         return getOr(key).map(i -> Float.parseFloat(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single float value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Float> getFloatOr(String key) {
         return getOr(key).map(i -> Float.parseFloat(i));
     }
 
+    /**
+     * Get all float values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default float[] getAllFloat(String key) {
         return toPrimitiveFloatArray(Arrays.asList(getAll(key)).stream().map(v -> Float.parseFloat(v)).toArray());
     }
 
-    default float[] getAllFloatOr(String key, float[] defaultValues) {
+    /**
+     * Get all float values given a key or a default value if no such key exists.
+     * The returned array may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @param defaultValues default values
+     * @return values
+     */
+    default float[] getAllFloatOr(String key, float... defaultValues) {
         return getAllFloatOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all float values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<float[]> getAllFloatOr(String key) {
         var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Float.parseFloat(v)).toArray());
         return arr.isEmpty() ? Optional.empty() : Optional.of(toPrimitiveFloatArray(arr.get()));
     }
 
+    /**
+     * Get a boolean value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return value
+     */
     default boolean getBoolean(String key) {
         return Boolean.parseBoolean(get(key));
     }
 
+    /**
+     * Get a single boolean value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
     default boolean getBooleanOr(String key, boolean defaultValue) {
         return getOr(key).map(i -> Boolean.parseBoolean(i)).orElse(defaultValue);
     }
 
+    /**
+     * Get a single boolean value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<Boolean> getBooleanOr(String key) {
         return getOr(key).map(i -> Boolean.parseBoolean(i));
     }
 
+    /**
+     * Get all boolean values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
     default boolean[] getAllBoolean(String key) {
         return toPrimitiveBooleanArray(Arrays.asList(getAll(key)).stream().map(v -> Boolean.parseBoolean(v)).toArray());
     }
 
+    /**
+     * Get all boolean values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default boolean[] getAllBooleanOr(String key, boolean[] defaultValues) {
         return getAllBooleanOr(key).orElse(defaultValues);
     }
 
+    /**
+     * Get all boolean values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
     default Optional<boolean[]> getAllBooleanOr(String key) {
         var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Boolean.parseBoolean(v)).toArray());
         return arr.isEmpty() ? Optional.empty() : Optional.of(toPrimitiveBooleanArray(arr.get()));
     }
+
+    /**
+     * Remove a child {@link Section} from this document or section.
+     * 
+     * @param section section to remove
+     */
+    void remove(Section section);
 
     private static short[] toPrimitiveShortArray(final Object[] shortList) {
         final short[] primitives = new short[shortList.length];
@@ -781,8 +1109,6 @@ public interface Data {
         }
         return primitives;
     }
-
-    void remove(Section section);
 
     private static Collection<Float> arrayToList(float[] values) {
         var l = new ArrayList<Float>(values.length);

@@ -25,7 +25,6 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
 ## WIP
 
  * Tests (see above badge for current coverage)
- * Javadoc
  
 ## Installation
 
@@ -35,7 +34,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>com.sshtools</artifactId>
-    <version>0.0.4</version>
+    <version>0.1.0</version>
 </dependency>
     
 ```
@@ -92,3 +91,28 @@ And for writing an INI document ..
         wrt.write(ini, out);
     }
 ```
+
+### Read An INI Document From A File
+
+```java
+    var ini = INI.fromFile(Paths.get("data.ini"));
+    System.out.format("Name: %s%n". ini.get("Name")); 
+    System.out.format("Age: %d%n". ini.getInt("Age"));
+    if(ini.getBoolean("Registered"))
+        System.out.println("Is registered%n");
+    
+    ini.sectionOr("Address").ifPresent(s -> {  
+        System.out.println("Address");
+        System.out.format("  Street: %s%n". s.get("Street"));
+        System.out.format("  Area: %s%n". s.get("Area"));
+        System.out.format("  City: %s%n". s.get("City"));
+        System.out.format("  County: %s%n". s.get("County"));
+        System.out.format("  PostCode: %s%n". s.get("PostCode"));
+        System.out.format("  Tel: %s%n". s.getOr("PostCode", "N/A"));
+    });
+    
+```
+
+## Credits
+
+Uses [LinkedCaseInsensitiveMap](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/LinkedCaseInsensitiveMap.html) from Spring Utilities.

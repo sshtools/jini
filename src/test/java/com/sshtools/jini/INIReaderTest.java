@@ -246,8 +246,8 @@ public class INIReaderTest {
     @Test
     public void testCaseSensitive() throws Exception {
         var ini = new INIReader.Builder().
-                withoutCaseInsensitiveKeys().
-                withoutCaseInsensitiveSections().
+                withCaseSensitiveKeys().
+                withCaseSensitiveSections().
                 build().read(getBasicIni());
         assertBasic(ini);
         assertBasicCaseSensitive(ini);
@@ -258,8 +258,8 @@ public class INIReaderTest {
     public void testCaseSensitiveAndUnderordered() throws Exception {
         var ini = new INIReader.Builder().
                 withoutPreserveOrder().
-                withoutCaseInsensitiveKeys().
-                withoutCaseInsensitiveSections().
+                withCaseSensitiveKeys().
+                withCaseSensitiveSections().
                 build().read(getBasicIni());
         assertBasic(ini);
         assertBasicCaseSensitive(ini);
