@@ -42,7 +42,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class INI extends AbstractData {
-    
+
     public final static class Builder {
 
         private boolean caseInsensitiveKeys = true;
@@ -75,16 +75,16 @@ public class INI extends AbstractData {
             this.preserveOrder = preserveOrder;
             return this;
         }
-        
+
         public INI build() {
             return new INI(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections);
         }
     }
-    
+
     public static INI create() {
         return new INI.Builder().build();
     }
-    
+
     public static INI fromFile(Path file) {
         try(var in = Files.newBufferedReader(file)) {
             return fromReader(in);
@@ -93,7 +93,7 @@ public class INI extends AbstractData {
             throw new UncheckedIOException(ioe);
         }
     }
-    
+
     public static INI fromReader(Reader reader) {
         try {
             return new INIReader.Builder().build().read(reader);
@@ -103,7 +103,7 @@ public class INI extends AbstractData {
             throw new IllegalStateException("Failed to parse.", e);
         }
     }
-    
+
     public static INI fromString(String content) {
         try {
             return new INIReader.Builder().build().read(content);
@@ -219,11 +219,11 @@ public class INI extends AbstractData {
 			this.parent = Optional.of(parent);
 			this.key = key;
 		}
-		
+
 		public void remove() {
 		    parent.orElseThrow(() -> new IllegalStateException("Has no parent")).remove(this);
 		}
-		
+
 		public Section parent() {
 		    return parentOr().orElseThrow(() -> new IllegalStateException("Has no parent."));
 		}
@@ -231,24 +231,24 @@ public class INI extends AbstractData {
         public String[] path() {
 
             var s = this;
-            var l = new ArrayList<String>(Arrays.asList(key()));
+            var l = new ArrayList<>(Arrays.asList(key()));
             while(s.parentOr().isPresent()) {
-                s = s.parent();             
+                s = s.parent();
                 l.add(s.key());
             }
             return l.toArray(new String[0]);
         }
-		
+
 		public Section[] parents() {
 		    var s = this;
             var l = new ArrayList<Section>();
 		    while(s.parentOr().isPresent()) {
-		        s = s.parent();		        
+		        s = s.parent();
 		        l.add(s);
 		    }
 		    return l.toArray(new Section[0]);
 		}
-		
+
         public Optional<Section> parentOr() {
             return parent.get() instanceof Section ? parent.map(d ->(Section)d) : Optional.empty();
         }
@@ -323,7 +323,7 @@ public class INI extends AbstractData {
 
 		/**
 		 * Default load factor for {@link HashMap}/{@link LinkedHashMap} variants.
-		 * 
+		 *
 		 * @see #newHashMap(int)
 		 * @see #newLinkedHashMap(int)
 		 */
@@ -338,7 +338,7 @@ public class INI extends AbstractData {
 		 * initial capacity relative to a load factor but is effectively aligned with
 		 * the JDK's
 		 * {@link java.util.concurrent.ConcurrentHashMap#ConcurrentHashMap(int)}.
-		 * 
+		 *
 		 * @param expectedSize the expected number of elements (with a corresponding
 		 *                     capacity to be derived so that no resize/rehash
 		 *                     operations are needed)
@@ -368,7 +368,7 @@ public class INI extends AbstractData {
 		/**
 		 * Create a new LinkedCaseInsensitiveMap that stores case-insensitive keys
 		 * according to the default Locale (by default in lower case).
-		 * 
+		 *
 		 * @see #convertKey(String)
 		 */
 		public LinkedCaseInsensitiveMap() {
@@ -378,7 +378,7 @@ public class INI extends AbstractData {
 		/**
 		 * Create a new LinkedCaseInsensitiveMap that stores case-insensitive keys
 		 * according to the given Locale (in lower case).
-		 * 
+		 *
 		 * @param locale the Locale to use for case-insensitive key conversion
 		 * @see #convertKey(String)
 		 */
@@ -391,7 +391,7 @@ public class INI extends AbstractData {
 		 * an initial capacity that can accommodate the specified number of elements
 		 * without any immediate resize/rehash operations to be expected, storing
 		 * case-insensitive keys according to the default Locale (in lower case).
-		 * 
+		 *
 		 * @param expectedSize the expected number of elements (with a corresponding
 		 *                     capacity to be derived so that no resize/rehash
 		 *                     operations are needed)
@@ -407,7 +407,7 @@ public class INI extends AbstractData {
 		 * an initial capacity that can accommodate the specified number of elements
 		 * without any immediate resize/rehash operations to be expected, storing
 		 * case-insensitive keys according to the given Locale (in lower case).
-		 * 
+		 *
 		 * @param expectedSize the expected number of elements (with a corresponding
 		 *                     capacity to be derived so that no resize/rehash
 		 *                     operations are needed)
@@ -416,7 +416,7 @@ public class INI extends AbstractData {
 		 * @see #convertKey(String)
 		 */
 		public LinkedCaseInsensitiveMap(int expectedSize, Locale locale) {
-			this.targetMap = new LinkedHashMap<String, V>((int) (expectedSize / DEFAULT_LOAD_FACTOR),
+			this.targetMap = new LinkedHashMap<>((int) (expectedSize / DEFAULT_LOAD_FACTOR),
 					DEFAULT_LOAD_FACTOR) {
 				@Override
 				public boolean containsKey(Object key) {
@@ -615,7 +615,7 @@ public class INI extends AbstractData {
 		/**
 		 * Return the locale used by this {@code LinkedCaseInsensitiveMap}. Used for
 		 * case-insensitive key conversion.
-		 * 
+		 *
 		 * @since 4.3.10
 		 * @see #LinkedCaseInsensitiveMap(Locale)
 		 * @see #convertKey(String)
@@ -629,7 +629,7 @@ public class INI extends AbstractData {
 		 * <p>
 		 * The default implementation converts the key to lower-case according to this
 		 * Map's Locale.
-		 * 
+		 *
 		 * @param key the user-specified key
 		 * @return the key to use for storing
 		 * @see String#toLowerCase(Locale)
@@ -640,7 +640,7 @@ public class INI extends AbstractData {
 
 		/**
 		 * Determine whether this map should remove the given eldest entry.
-		 * 
+		 *
 		 * @param eldest the candidate entry
 		 * @return {@code true} for removing it, {@code false} for keeping it
 		 * @see LinkedHashMap#removeEldestEntry

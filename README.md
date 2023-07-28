@@ -24,6 +24,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
 ## WIP
 
  * Tests (see above badge for current coverage)
+ * Javadoc
  
 ## Installation
 

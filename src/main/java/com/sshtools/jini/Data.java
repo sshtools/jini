@@ -27,8 +27,15 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+/**
+ * Base interface shared by both the document object {@link INI} and the sections
+ * contained within that document {@link Section}. 
+ */
 public interface Data {
 
+    /**
+     * Abstract implementation of {@link Data}.
+     */
     public abstract class AbstractData implements Data {
 
         final Map<String, Section[]> sections;
@@ -89,7 +96,7 @@ public interface Data {
         }
 
         @Override
-        public void putAllShort(String key, short... values) {
+        public void putAll(String key, short... values) {
             this.values.put(key, arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
         }
 
@@ -166,8 +173,20 @@ public interface Data {
         }
     }
 
+    /**
+     * Get an unmodifiable map of the underlying values. The returned array of values
+     * will never be <code>null</code>, but may potentially be an empty array.
+     * 
+     * @return map of values in this section or document
+     */
     Map<String, String[]> values();
 
+    /**
+     * Get an unmodifiable map of the underlying sections. The returned array of values
+     * will never be <code>null</code>, and will never be an empty array.
+     * 
+     * @return map of sections in this section or document
+     */
     Map<String, Section[]> sections();
 
     default Section section(String key) {
@@ -175,74 +194,279 @@ public interface Data {
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with key {0}", key)));
     }
     
+    /**
+     * Get whether this document or section contains a value (empty or otherwise).
+     * 
+     * @param key key of value
+     * @return document or section contains key
+     */
     boolean containsKey(String key);
     
+    /**
+     * Get whether this document or section contains a child section.
+     * 
+     * @param key key of section
+     * @return document or section contains section
+     */
     boolean containsSection(String key);
 
+    /**
+     * Put a string value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, String value) {
         putAll(key, value);
     }
 
+    /**
+     * Put an integer value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, int value) {
         putAll(key, value);
     }
 
+    /**
+     * Put a short value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, short value) {
-        putAllShort(key, value);
+        putAll(key, value);
     }
 
+    /**
+     * Put a long value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, long value) {
         putAll(key, value);
     }
 
+    /**
+     * Put a float value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, float value) {
         putAll(key, value);
     }
 
+    /**
+     * Put a double value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, double value) {
         putAll(key, value);
     }
 
+    /**
+     * Put a boolean value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
     default void put(String key, boolean value) {
         putAll(key, value);
     }
 
+    /**
+     * Put zero or more string values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, String... values);
 
+    /**
+     * Put zero or more integer values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>. 
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, int... values);
 
-    void putAllShort(String key, short... values);
+    /**
+     * Put zero or more short values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
+    void putAll(String key, short... values);
 
+    /**
+     * Put zero or more long values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, long... values);
 
+    /**
+     * Put zero or more float values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, float... values);
 
+    /**
+     * Put zero or more double values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, double... values);
 
+    /**
+     * Put zero or more boolean values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     void putAll(String key, boolean... values);
 
+    /**
+     * Put one or more string values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void put(String key, Collection<String> values) {
         putAll(key, values.toArray(new String[0]));
     }
 
+    /**
+     * Put one or more integer values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putInt(String key, Collection<Integer> values) {
         putAll(key, values.stream().mapToInt(i -> i).toArray());
 
     }
 
+    /**
+     * Put one or more short values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putShort(String key, Collection<Short> values) {
         var result = new short[values.size()];
         var i = 0;
         for (var f : values) {
             result[i++] = f;
         }
-        putAllShort(key, result);
+        putAll(key, result);
     }
 
+    /**
+     * Put one or more long values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putLong(String key, Collection<Long> values) {
         putAll(key, values.stream().mapToLong(i -> i).toArray());
     }
 
+    /**
+     * Put one or more float values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putFloat(String key, Collection<Float> values) {
         var result = new float[values.size()];
         var i = 0;
@@ -252,11 +476,35 @@ public interface Data {
         putAll(key, result);
     }
 
+    /**
+     * Put one or more double values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putDouble(String key, Collection<Double> values) {
         putAll(key, values.stream().mapToDouble(i -> i).toArray());
 
     }
 
+    /**
+     * Put one or more boolean values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty list of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>.
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
     default void putBoolean(String key, Collection<Boolean> values) {
         var result = new boolean[values.size()];
         var i = 0;
@@ -267,6 +515,15 @@ public interface Data {
 
     }
 
+    /**
+     * Get a {@link Section} given it's its key relative to this document or parent
+     * section. If there are no sections with such a key, {@link Optional#isEmpty()} will
+     * return <code>true</code>. If there are more than one sections with such a key, the
+     * first section will be returned.
+     * 
+     * @param key section key
+     * @return optional section 
+     */
     default Optional<Section> sectionOr(String key) {
         var all = allSectionsOr(key);
         if (all.isEmpty())
@@ -280,13 +537,42 @@ public interface Data {
         }
     }
 
+    /**
+     * Get all sections with the given key that is relative to this document or parent. If
+     * there are no sections with such a key, an {@link IllegalArgumentException} will be thrown.
+     * An empty array will never be returned.
+     *  
+     * @param key key 
+     * @return sections with key
+     */
     default Section[] allSections(String key) {
         return allSectionsOr(key)
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with key {0}", key)));
     }
 
+    /**
+     * Get all sections with the given key that is relative to this document or parent. 
+     * If there are no sections with such a key, {@link Optional#isEmpty()} will
+     * return <code>true</code>. An empty array will never be returned.
+     * 
+     * @param key section key
+     * @return optional sections with key
+     */
     Optional<Section[]> allSectionsOr(String key);
 
+    /**
+     * Create either a single section inside this document or parent section, or create 
+     * nested sections starting inside this document or parent section.
+     * <p>
+     * When creating a path of sections, if specified parent sections already exist they
+     * will not be overwritten.
+     * <p>
+     * The final element of the path, if such a section with the same key already exists,
+     * a 2nd section with the same key will be created.
+     * 
+     * @param path
+     * @return the new section
+     */
     Section create(String... path);
 
     default String get(String key) {
