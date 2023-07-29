@@ -43,10 +43,12 @@ public interface Data {
         final boolean preserveOrder;
         final boolean caseSensitiveKeys;
         final boolean caseSensitiveSections;
+        final boolean emptyValues; 
 
-        AbstractData(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
+        AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
                 Map<String, String[]> values, Map<String, Section[]> sections) {
             super();
+            this.emptyValues = emptyValues;
             this.sections = sections;
             this.values = values;
             this.preserveOrder = preserveOrder;
@@ -54,14 +56,19 @@ public interface Data {
             this.caseSensitiveSections = caseSensitiveSections;
         }
 
-        AbstractData(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections) {
-            this(preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+        AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections) {
+            this(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
                     INIReader.createPropertyMap(preserveOrder, caseSensitiveKeys),
                     INIReader.createSectionMap(preserveOrder, caseSensitiveSections));
         }
 
         @Override
-        public boolean containsKey(String key) {
+        public boolean remove(String key) {
+            return values.remove(key) != null;
+        }
+
+        @Override
+        public boolean contains(String key) {
             return values.containsKey(key);
         }
 
@@ -71,55 +78,40 @@ public interface Data {
         }
 
         @Override
-        public void remove(Section section) {
-            var v = sections.get(section.key());
-            if (v == null) {
-                throw new IllegalArgumentException("Section not part of this section");
-            }
-            var l = new ArrayList<>(Arrays.asList(v));
-            l.remove(section);
-            if (l.isEmpty())
-                sections.remove(section.key());
-            else
-                sections.put(section.key(), l.toArray(new Section[0]));
-        }
-
-        @Override
         public void putAll(String key, String... values) {
-            this.values.put(key, values);
-
+            this.values.put(key, nullCheck(values));
         }
 
         @Override
         public void putAll(String key, int... values) {
-            this.values.put(key, IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
+            this.values.put(key, nullCheck(IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s])));
         }
 
         @Override
         public void putAll(String key, short... values) {
-            this.values.put(key, arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
         }
 
         @Override
         public void putAll(String key, long... values) {
-            this.values.put(key, LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
+            this.values.put(key, nullCheck(LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s])));
         }
 
         @Override
         public void putAll(String key, float... values) {
-            this.values.put(key, arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
         }
 
         @Override
         public void putAll(String key, double... values) {
-            this.values.put(key, arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
         }
 
         @Override
         public void putAll(String key, boolean... values) {
-            this.values.put(key, arrayToList(values).stream().map(i -> {
+            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> {
                 return i.toString();
-            }).toArray((s) -> new String[s]));
+            }).toArray((s) -> new String[s])));
         }
 
         @Override
@@ -160,12 +152,12 @@ public interface Data {
                 var name = path[i];
                 var existing = parent == null ? sections.get(name) : parent.sections.get(name);
                 if (existing == null) {
-                    newSection = new Section(preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
+                    newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                             parent == null ? this : parent, name);
                     (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
                 } else {
                     if (last) {
-                        newSection = new Section(preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
+                        newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                                 parent == null ? this : parent, name);
                         var newSections = new Section[existing.length + 1];
                         System.arraycopy(existing, 0, newSections, 0, existing.length);
@@ -179,6 +171,42 @@ public interface Data {
             if (newSection == null)
                 throw new IllegalArgumentException("No section path");
             return newSection;
+        }
+        
+        void remove(Section section) {
+            var v = sections.get(section.key());
+            if (v == null) {
+                throw new IllegalArgumentException("Section not part of this section");
+            }
+            var l = new ArrayList<>(Arrays.asList(v));
+            l.remove(section);
+            if (l.isEmpty())
+                sections.remove(section.key());
+            else
+                sections.put(section.key(), l.toArray(new Section[0]));
+        }
+        
+        private String[] nullCheck(String... objs) {
+            if(objs == null) {
+                if(emptyValues)
+                    return new String[0];
+                else
+                    throw new IllegalArgumentException("Value may not be null.");
+            }
+            else  {
+                if((objs.length == 1 && objs[0] == null) || (objs.length == 0)) {
+                    if(emptyValues)
+                        return new String[0];
+                    else
+                        throw new IllegalArgumentException("Value may not be null.");
+                }
+                else {
+                    for(var obj : objs)
+                        if(obj == null)
+                            throw new IllegalArgumentException("Only a single value may contain null values.");
+                }
+            }
+            return objs;
         }
     }
 
@@ -218,7 +246,15 @@ public interface Data {
      * @param key key of value
      * @return document or section contains key
      */
-    boolean containsKey(String key);
+    boolean contains(String key);
+    
+    /**
+     * Remove a value give it's key.
+     * 
+     * @param key key of value
+     * @return value was removed
+     */
+    boolean remove(String key);
     
     /**
      * Get whether this document or section contains a child section.
@@ -547,11 +583,7 @@ public interface Data {
         if (all.isEmpty())
             return Optional.empty();
         else {
-            var a = all.get();
-            if (a.length == 0)
-                return Optional.empty();
-            else
-                return Optional.of(a[0]);
+            return Optional.of(all.get()[0]);
         }
     }
 
@@ -1093,13 +1125,6 @@ public interface Data {
         var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Boolean.parseBoolean(v)).toArray());
         return arr.isEmpty() ? Optional.empty() : Optional.of(toPrimitiveBooleanArray(arr.get()));
     }
-
-    /**
-     * Remove a child {@link Section} from this document or section.
-     * 
-     * @param section section to remove
-     */
-    void remove(Section section);
 
     private static short[] toPrimitiveShortArray(final Object[] shortList) {
         final short[] primitives = new short[shortList.length];

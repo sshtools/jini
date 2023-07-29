@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Writes {@link INI} documents in the INI format.
@@ -56,12 +57,28 @@ public class INIWriter extends AbstractIO {
     }
 
     /**
-     * Creates {@link INIWriter} instances.
+     * Creates {@link INIWriter} instances. Builders may be re-used, once {@link #build()}
+     * is used, any changes to the builder will not affect the created instance.
      */
     public final static class Builder extends AbstractIOBuilder<Builder> {
 
         private StringQuoteMode stringQuoteMode = StringQuoteMode.AUTO;
         private char quoteCharacter = '"';
+        private boolean emptyValuesHaveSeparator = true;
+
+        /**
+         * When {@link #withEmptyValues(boolean)} is true (the default), this configures whether
+         * the value separator ({@link #withValueSeparator(char)} will be written when the value is empty.
+         * {@link #withValueSeparatorWhitespace(boolean)} also affects this, adding space either side of
+         * the separator.
+         * 
+         * @param emptyValuesHaveSeparator empty values have separator.
+         * @return this for chaining
+         */
+        public Builder withEmptyValuesHaveSeparator(boolean emptyValuesHaveSeparator) {
+            this.emptyValuesHaveSeparator = emptyValuesHaveSeparator;
+            return this;
+        }
 
         /**
          * Configure how the write behaves when writing strings with regard to
@@ -99,11 +116,13 @@ public class INIWriter extends AbstractIO {
 
     private final StringQuoteMode stringQuoteMode;
     private final char quoteCharacter;
+    private final boolean emptyValuesHaveSeparator;
 
     INIWriter(Builder builder) {
         super(builder);
         this.stringQuoteMode = builder.stringQuoteMode;
         this.quoteCharacter = builder.quoteCharacter;
+        this.emptyValuesHaveSeparator = builder.emptyValuesHaveSeparator;
     }
 
     /**
@@ -147,16 +166,16 @@ public class INIWriter extends AbstractIO {
 
         values.forEach((k, v) -> writeProperty(pw, k, v));
 
-        writeSections(pw, values.size() > 0, sections, path);
+        writeSections(pw, new AtomicBoolean(values.size() > 0), sections, path);
 
         pw.flush();
     }
 
-    private void writeSections(PrintWriter pw, boolean lf, Map<String, Section[]> sections, Stack<String> path) {
+    private void writeSections(PrintWriter pw, AtomicBoolean lf, Map<String, Section[]> sections, Stack<String> path) {
         if (sections.size() > 0) {
-            if (lf)
-                pw.println();
-            sections.forEach((k, v) -> writeSection(pw, path, k, v));
+            for(var section : sections.entrySet()) {
+                writeSection(pw, path, section.getKey(), lf, section.getValue());
+            }
         }
     }
 
@@ -206,19 +225,22 @@ public class INIWriter extends AbstractIO {
         return value;
     }
 
-    private void writeSection(PrintWriter pw, Stack<String> path, String key, Section... values) {
+    private void writeSection(PrintWriter pw, Stack<String> path, String key, AtomicBoolean newline, Section... sections) {
         path.push(key);
         try {
-            if (values.length < 2) {
-                pw.println("[" + escape(key) + "]");
-                if (values.length == 1) {
-                    values[0].values().forEach((k, v) -> writeProperty(pw, k, v));
-                    var sections = values[0].sections();
-                    writeSections(pw, true, sections, path);
+            if (sections.length < 2) {
+                if(newline.get())
+                    pw.println();
+                pw.format("[%s]%n", escape(key));
+                if (sections.length == 1) {
+                    sections[0].values().forEach((k, v) -> writeProperty(pw, k, v));
+                    newline.set(true);
+                    writeSections(pw, newline, sections[0].sections(), path);
                 }
             } else {
-                for (var v : values)
-                    writeSection(pw, path, key, v);
+                for (var v : sections) {
+                    writeSection(pw, path, key, newline, v);
+                }
             }
         } finally {
             path.pop();
@@ -227,7 +249,20 @@ public class INIWriter extends AbstractIO {
 
     private void writeProperty(PrintWriter pw, String key, String... values) {
         if (values.length == 0) {
-            pw.println(escape(key));
+            if(emptyValues) {
+                pw.print(escape(key));
+                if(emptyValuesHaveSeparator) {
+                    if(valueSeparatorWhitespace) {
+                        pw.println(" = ");
+                    }
+                    else {
+                        pw.println("=");
+                    }
+                }
+                else {
+                    pw.println();
+                }
+            }
         } else if (values.length == 1) {
             writeOneProperty(pw, key, quote(values[0]));
         } else {

@@ -101,7 +101,8 @@ public final class INIReader extends AbstractIO {
     }
 
     /**
-     * Creates {@link INIReader} instances.
+     * Creates {@link INIReader} instances. Builders may be re-used, once {@link #build()}
+     * is used, any changes to the builder will not affect the created instance.
      */
     public static class Builder extends AbstractIOBuilder<Builder> {
         private boolean globalSection = true;
@@ -110,7 +111,6 @@ public final class INIReader extends AbstractIO {
         private boolean preserveOrder = true;
         private boolean nestedSections = true;
         private boolean parseExceptions = true;
-        private boolean emptyValues = true;
         private boolean comments = true;
         private boolean inlineComments = true;
         private DuplicateAction duplicateKeysAction = DuplicateAction.REPLACE;
@@ -179,28 +179,6 @@ public final class INIReader extends AbstractIO {
          */
         public final Builder withInlineComments(boolean inlineComments) {
             this.inlineComments = inlineComments;
-            return this;
-        }
-
-        /**
-         * Do not allow empty values. When reading the content, if a key's value is
-         * empty the key will be entirely ignored.
-         * 
-         * @return this for chaining
-         */
-        public final Builder withoutEmptyValues() {
-            return withEmptyValues(false);
-        }
-
-        /**
-         * Configure whether to allow empty values. When <code>true</code> and reading
-         * the content, if a key's value is empty the key will be entirely ignored.
-         * 
-         * @param emptyValues allow empty values
-         * @return this for chaining
-         */
-        public final Builder withEmptyValues(boolean emptyValues) {
-            this.emptyValues = emptyValues;
             return this;
         }
 
@@ -387,7 +365,6 @@ public final class INIReader extends AbstractIO {
     private final DuplicateAction duplicateKeysAction;
     private final DuplicateAction duplicateSectionAction;
     private final boolean inlineComments;
-    private final boolean emptyValues;
     private final boolean parseExceptions;
     private final char[] quoteCharacters;
 
@@ -402,7 +379,6 @@ public final class INIReader extends AbstractIO {
         this.duplicateKeysAction = builder.duplicateKeysAction;
         this.duplicateSectionAction = builder.duplicateSectionAction;
         this.inlineComments = builder.inlineComments;
-        this.emptyValues = builder.emptyValues;
         this.parseExceptions = builder.parseExceptions;
         this.quoteCharacters = builder.quoteCharacters;
     }
@@ -455,7 +431,7 @@ public final class INIReader extends AbstractIO {
         var globalProperties = createPropertyMap(preserveOrder, caseSensitiveKeys);
         Section section = null;
 
-        var ini = new INI(preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections);
+        var ini = new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections);
 
         while ((line = lineReader.readLine()) != null) {
             offset += line.length();
@@ -603,7 +579,7 @@ public final class INIReader extends AbstractIO {
                         var sectionsForKey = parent.get(sectionKey);
 
                         if (last) {
-                            var newSection = new Section(preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+                            var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
                                     lastSection == null ? ini : lastSection, sectionKey);
                             if (sectionsForKey == null) {
                                 /* Doesn't exist, just add */
@@ -637,7 +613,7 @@ public final class INIReader extends AbstractIO {
                         } else {
                             if (sectionsForKey == null) {
                                 /* Doesn't exist, just add */
-                                sectionsForKey = new Section[] { new Section(preserveOrder, caseSensitiveKeys,
+                                sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
                                         caseSensitiveSections, lastSection, sectionKey) };
                                 parent.put(sectionKey, sectionsForKey);
                             }
@@ -691,12 +667,12 @@ public final class INIReader extends AbstractIO {
                         switch (duplicateKeysAction) {
                         case ABORT:
                             throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
-                        case MERGE:
                         case REPLACE:
                             sectionProperties.put(key, values);
                             break;
                         case IGNORE:
                             continue;
+                        case MERGE:
                         case APPEND:
                             var newValues = new String[valuesForKey.length + values.length];
                             System.arraycopy(valuesForKey, 0, newValues, 0, valuesForKey.length);

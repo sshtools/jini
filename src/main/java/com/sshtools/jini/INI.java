@@ -63,13 +63,42 @@ import java.util.function.Function;
 public class INI extends AbstractData {
 
     /**
-     * Build {@link INI} obhjects.
+     * Build {@link INI} objects. Builders may be re-used, once {@link #build()} is
+     * used, any changes to the builder will not affect the created instance.
      */
     public final static class Builder {
 
         private boolean caseSensitiveKeys = false;
         private boolean caseSensitiveSections = false;
         private boolean preserveOrder = true;
+        private boolean emptyValues = true;
+
+        /**
+         * Configure the to not allow empty values. Any <code>null</code> or empty array
+         * values inserted will throw a {@link IllegalArgumentException}.
+         * 
+         * @param emptyValues allow empty values
+         * @return this for chaining
+         */
+        public final Builder withoutEmptyValues() {
+            return withEmptyValues(false);
+        }
+
+        /**
+         * Configure the document whether to allow empty values. When <code>true</code>
+         * any <code>null</code> values inserted will be converted to empty values. When
+         * <code>false</code> any <code>null</code> or empty array values inserted will
+         * throw a {@link IllegalArgumentException}.
+         * <p>
+         * By default empty values are allowed.
+         * 
+         * @param emptyValues allow empty values
+         * @return this for chaining
+         */
+        public final Builder withEmptyValues(boolean emptyValues) {
+            this.emptyValues = emptyValues;
+            return this;
+        }
 
         /**
          * Configure the document to use case sensitive keys.
@@ -77,7 +106,7 @@ public class INI extends AbstractData {
          * @return this for chaining
          */
         public final Builder withCaseSensitiveKeys() {
-            return withCaseSensitiveKeys(false);
+            return withCaseSensitiveKeys(true);
         }
 
         /**
@@ -96,8 +125,8 @@ public class INI extends AbstractData {
          * 
          * @return this for chaining
          */
-        public final Builder withoutCaseSensitiveSections() {
-            return withCaseSensitiveSections(false);
+        public final Builder withCaseSensitiveSections() {
+            return withCaseSensitiveSections(true);
         }
 
         /**
@@ -138,7 +167,7 @@ public class INI extends AbstractData {
          * @return document
          */
         public INI build() {
-            return new INI(preserveOrder, caseSensitiveKeys, caseSensitiveSections);
+            return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections);
         }
     }
 
@@ -192,7 +221,7 @@ public class INI extends AbstractData {
      * @return document
      */
     public static INI fromString(String content) {
-       return fromReader(new StringReader(content));
+        return fromReader(new StringReader(content));
     }
 
     static abstract class AbstractIO {
@@ -205,6 +234,7 @@ public class INI extends AbstractData {
         protected final boolean trimmedValue;
         protected final MultiValueMode multiValueMode;
         protected final char multiValueSeparator;
+        protected final boolean emptyValues;
 
         AbstractIO(AbstractIOBuilder<?> builder) {
             this.sectionPathSeparator = builder.sectionPathSeparator;
@@ -215,6 +245,7 @@ public class INI extends AbstractData {
             this.trimmedValue = builder.trimmedValue;
             this.multiValueMode = builder.multiValueMode;
             this.multiValueSeparator = builder.multiValueSeparator;
+            this.emptyValues = builder.emptyValues;
         }
     }
 
@@ -228,6 +259,40 @@ public class INI extends AbstractData {
         boolean trimmedValue = true;
         MultiValueMode multiValueMode = MultiValueMode.REPEATED_KEY;
         char multiValueSeparator = ',';
+        boolean emptyValues = true;
+
+        /**
+         * Do not allow empty values. When reading the content, if a key's value is
+         * empty the key will be entirely ignored. When writing the content, if a key's
+         * value is empty neither key nor value will be written.
+         * <p>
+         * By default empty values are allowed.
+         * 
+         * @return this for chaining
+         */
+        public final B withoutEmptyValues() {
+            return withEmptyValues(false);
+        }
+
+        /**
+         * Configure whether to allow empty values.
+         * <p>
+         * When <code>true</code> and reading the content, if a key's value is empty the
+         * key will be stored with an empty value. When writing the content, if a key's
+         * value is empty it will be written with it's key, but no value.
+         * <p>
+         * When <code>false</code> and reading the content, if a key's value is empty
+         * the key will be entirely ignored. When writing the content, if a key's value
+         * is empty neither key nor value will be written.
+         * 
+         * @param emptyValues allow empty values
+         * @return this for chaining
+         */
+        @SuppressWarnings("unchecked")
+        public final B withEmptyValues(boolean emptyValues) {
+            this.emptyValues = emptyValues;
+            return (B) this;
+        }
 
         /**
          * Configure how to behave when duplicate value keys are encountered. See
@@ -385,21 +450,20 @@ public class INI extends AbstractData {
         private final Optional<Data> parent;
         private final INI ini;
 
-        Section(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections, Data parent,
-                String key) {
-            super(preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+        Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
+                Data parent, String key) {
+            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
             this.parent = Optional.of(parent);
             this.key = key;
-            
+
             Data p = parent;
             INI ini;
-            while(true) {
-                if(p instanceof INI) {
-                    ini = (INI)p;
+            while (true) {
+                if (p instanceof INI) {
+                    ini = (INI) p;
                     break;
-                }
-                else
-                    p = ((Section)p).parent.get();
+                } else
+                    p = ((Section) p).parent.get();
             }
             this.ini = ini;
         }
@@ -408,9 +472,9 @@ public class INI extends AbstractData {
          * Remove this section from it's parent section or document.
          */
         public void remove() {
-            parent.get().remove(this);
+            ((AbstractData) parent.get()).remove(this);
         }
-        
+
         /**
          * Get the root document {@link INI} this section is part of.
          * 
@@ -493,13 +557,13 @@ public class INI extends AbstractData {
 
     }
 
-    INI(boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
+    INI(boolean emptyValues, boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
             Map<String, String[]> values, Map<String, Section[]> sections) {
-        super(preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections);
+        super(emptyValues, preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections);
     }
 
-    INI(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections) {
-        super(preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+    INI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections) {
+        super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
     }
 
     @Override

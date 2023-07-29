@@ -128,6 +128,18 @@ public class INIReaderTest {
     }
     
     @Test
+    public void testMergeDuplicateKeys() throws IOException, ParseException {
+        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.MERGE)
+                .build().read("""
+                        S1aK1 = V1
+                        S1aK1 = V2
+                        S1aK1 = V3
+                        """); 
+        assertEquals(1, ini.values().size());
+        assertArrayEquals(new String[] { "V1", "V2", "V3" }, ini.getAll("S1aK1"));
+    }
+    
+    @Test
     public void testAppendDuplicateSection() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.APPEND)
                 .build().read("""
@@ -260,7 +272,7 @@ public class INIReaderTest {
     }
 
     @Test
-    public void testCaseSensitiveAndUnderordered() throws Exception {
+    public void testCaseSensitiveAndUnordered() throws Exception {
         var ini = new INIReader.Builder().
                 withoutPreserveOrder().
                 withCaseSensitiveKeys().
@@ -283,6 +295,48 @@ public class INIReaderTest {
         assertEquals("Val1", ini.get(";Key1"));
         assertEquals("Val2", ini.get("Key2"));
         assertEquals("Val3", ini.get(";Key3"));
+    }
+
+    @Test
+    public void testCommentCharacter() throws Exception {
+        var ini = new INIReader.Builder().
+                withCommentCharacter('#').
+                build().read("""
+                #Key1 = Val1
+                Key2 = Val2
+                ;Key3 = Val3
+                #Key4 = Val4
+                """);
+        assertEquals(2, ini.values().size());
+        assertEquals("Val2", ini.get("Key2"));
+        assertEquals("Val3", ini.get(";Key3"));
+    }
+
+    @Test
+    public void testValueSeparator() throws Exception {
+        var ini = new INIReader.Builder().
+                withValueSeparator(':').
+                build().read("""
+                Key1= : =Val1
+                """);
+        assertEquals(1, ini.values().size());
+        assertEquals("=Val1", ini.get("Key1="));
+    }
+
+    @Test
+    public void testSectionPathSeparator() throws Exception {
+        var ini = new INIReader.Builder().
+                withSectionPathSeparator('/').
+                build().read("""
+                Key1 = Val1
+                [Section1]
+                S1Key1 = S1Val1
+                [Section1/Section2]
+                S1S2Key1 = S1S2Val1
+                """);
+        assertEquals(1, ini.sections().size());
+        assertEquals("Section1", ini.sections().values().iterator().next()[0].key());
+        assertEquals("Section2", ini.section("Section1").sections().values().iterator().next()[0].key());
     }
 
     @Test
