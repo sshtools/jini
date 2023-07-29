@@ -113,11 +113,10 @@ public class INIWriter extends AbstractIO {
      * @return string  content
      * @throws IOException
      */
-    public String write(INI document) throws IOException {
-        try (var w = new StringWriter()) {
-            write(document, w);
-            return w.toString();
-        }
+    public String write(INI document) {
+        var w = new StringWriter();
+        write(document, w);
+        return w.toString();
     }
 
     /**
@@ -140,7 +139,7 @@ public class INIWriter extends AbstractIO {
      * @param writer writer
      * @throws IOException on error
      */
-    public void write(INI document, Writer writer) throws IOException {
+    public void write(INI document, Writer writer) {
         var pw = new PrintWriter(writer);
         var values = document.values();
         var sections = document.sections();

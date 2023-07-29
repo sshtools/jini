@@ -15,6 +15,11 @@
  */
 package com.sshtools.jini;
 
+import static com.sshtools.jini.INITest.assertBasic;
+import static com.sshtools.jini.INITest.assertBasicCaseSensitive;
+import static com.sshtools.jini.INITest.assertBasicInsensitive;
+import static com.sshtools.jini.INITest.assertBasicOrder;
+import static com.sshtools.jini.INITest.getBasicIni;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,7 +39,7 @@ public class INIReaderTest {
 
     @Test
     public void testReadFromString() throws Exception {
-        var ini = new INIReader.Builder().build().read(getBasicIni());
+        var ini = new INIReader.Builder().build().read(INITest.getBasicIni());
         assertBasic(ini);
         assertBasicOrder(ini);
         assertBasicInsensitive(ini);
@@ -44,7 +49,7 @@ public class INIReaderTest {
     public void testReadFromFile() throws Exception {
         var tf = Files.createTempFile("jini", ".ini");
         try(var out = Files.newOutputStream(tf)) {
-            out.write(getBasicIni().getBytes());
+            out.write(INITest.getBasicIni().getBytes());
         }
         var ini = new INIReader.Builder().build().read(tf);
         assertBasic(ini);
@@ -449,89 +454,5 @@ public class INIReaderTest {
         assertEquals("Val 4", ini.get("Key 4"));
     }
 
-    protected void assertBasicCaseSensitive(INI ini) {
-        assertFalse(ini.sections().containsKey("section1"));
-        var sec1 = ini.section("Section1");
-        assertFalse(sec1.values().containsKey("key1"));        
-        assertFalse(sec1.values().containsKey("key2"));
-        assertFalse(sec1.values().containsKey("key 3"));
-        assertFalse(sec1.values().containsKey("key4"));
-    }
-
-    protected void assertBasicInsensitive(INI ini) {
-        var sec1 = ini.section("Section1");
-        assertEquals("Value1", sec1.get("key1"));
-        assertEquals("Value2", sec1.get("key 2"));
-        assertEquals("Value 3", sec1.get("key 3"));
-        assertEquals("Value 4", sec1.get("key4"));
-        assertTrue(ini.sections().containsKey("section1"));
-    }
-
-    protected void assertBasic(INI ini) {
-        assertEquals(5, ini.values().size());
-        assertEquals("RootVal1", ini.get("Root 1"));
-        assertEquals("RootVal2", ini.get("Root2"));
-        assertEquals("Root Val 3", ini.get("Root 3"));
-        assertEquals("Root Val 4", ini.get("Root 4"));
-        assertEquals("Root Val 5", ini.get("Root 5"));
-        assertEquals(3, ini.sections().size());
-        assertTrue(ini.sections().containsKey("Section1"));
-        assertTrue(ini.sections().containsKey("Section2"));
-        assertTrue(ini.sections().containsKey("Section3"));
-        var sec1 = ini.section("Section1");
-        assertEquals("Value1", sec1.get("Key1"));
-        assertEquals("Value2", sec1.get("Key 2"));
-        assertEquals("Value 3", sec1.get("Key 3"));
-        assertEquals("Value 4", sec1.get("Key4"));
-        var sec2 = ini.section("Section2");
-        assertEquals("Value1-2", sec2.get("Key1-2"));
-        assertEquals("Value2-2", sec2.get("Key 2-2"));
-        assertEquals("Value 3-2", sec2.get("Key 3-2"));
-        assertEquals("Value 4-2", sec2.get("Key4-2"));
-        var sec3 = ini.section("Section3");
-        assertEquals("Value1-3", sec3.get("Key1-3"));
-        assertEquals("Value2-3", sec3.get("Key 2-3"));
-        assertEquals("Value 3-3", sec3.get("Key 3-3"));
-        assertEquals("Value 4-3", sec3.get("Key4-3"));
-    }
-
-    protected String getBasicIni() {
-        return """
-                ; Some Comment
-                Root 1 = RootVal1
-                Root2 = RootVal2
-                Root 3 = Root Val 3
-                Root 4 = 'Root Val 4'
-                Root 5 = "Root Val 5"
-
-                ; Another Comment
-                [Section1]
-                Key1 = Value1
-                Key 2 = Value2
-                Key 3 = 'Value 3'
-                Key4=\"Value 4\"
-
-                ; Yet Another Comment
-                [Section2]
-                Key1-2 = Value1-2
-                Key 2-2 = Value2-2
-                Key 3-2 = 'Value 3-2'
-                Key4-2=\"Value 4-2\"
-
-                ; Yet Another Comment
-                [Section3]
-                Key1-3 = Value1-3
-                Key 2-3 = Value2-3
-                Key 3-3 = 'Value 3-3'
-                Key4-3=\"Value 4-3\"
-                """;
-    }
-
-    protected void assertBasicOrder(INI ini) {
-        assertEquals("Root 1,Root2,Root 3,Root 4,Root 5", String.join(",", ini.values().keySet().toArray(new String[0])));
-        assertEquals("Key1,Key 2,Key 3,Key4", String.join(",", ini.section("Section1").values().keySet().toArray(new String[0])));
-        assertEquals("Key1-2,Key 2-2,Key 3-2,Key4-2", String.join(",", ini.section("Section2").values().keySet().toArray(new String[0])));
-        assertEquals("Key1-3,Key 2-3,Key 3-3,Key4-3", String.join(",", ini.section("Section3").values().keySet().toArray(new String[0])));
-        assertEquals("Section1,Section2,Section3", String.join(",", ini.sections().keySet().toArray(new String[0])));
-    }
+   
 }

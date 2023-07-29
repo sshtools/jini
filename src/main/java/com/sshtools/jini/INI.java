@@ -21,6 +21,7 @@ import com.sshtools.jini.INIReader.MultiValueMode;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -190,13 +192,7 @@ public class INI extends AbstractData {
      * @return document
      */
     public static INI fromString(String content) {
-        try {
-            return new INIReader.Builder().build().read(content);
-        } catch (IOException ioe) {
-            throw new UncheckedIOException(ioe);
-        } catch (ParseException e) {
-            throw new IllegalStateException("Failed to parse.", e);
-        }
+       return fromReader(new StringReader(content));
     }
 
     static abstract class AbstractIO {
@@ -387,19 +383,41 @@ public class INI extends AbstractData {
     public final static class Section extends AbstractData {
         private final String key;
         private final Optional<Data> parent;
+        private final INI ini;
 
         Section(boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections, Data parent,
                 String key) {
             super(preserveOrder, caseSensitiveKeys, caseSenstiveSections);
             this.parent = Optional.of(parent);
             this.key = key;
+            
+            Data p = parent;
+            INI ini;
+            while(true) {
+                if(p instanceof INI) {
+                    ini = (INI)p;
+                    break;
+                }
+                else
+                    p = ((Section)p).parent.get();
+            }
+            this.ini = ini;
         }
 
         /**
          * Remove this section from it's parent section or document.
          */
         public void remove() {
-            parent.orElseThrow(() -> new IllegalStateException("Has no parent")).remove(this);
+            parent.get().remove(this);
+        }
+        
+        /**
+         * Get the root document {@link INI} this section is part of.
+         * 
+         * @return document
+         */
+        public INI document() {
+            return ini;
         }
 
         /**
@@ -426,6 +444,7 @@ public class INI extends AbstractData {
                 s = s.parent();
                 l.add(s.key());
             }
+            Collections.reverse(l);
             return l.toArray(new String[0]);
         }
 
@@ -485,11 +504,7 @@ public class INI extends AbstractData {
 
     @Override
     public String toString() {
-        try {
-            return new INIWriter.Builder().build().write(this);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return new INIWriter.Builder().build().write(this);
     }
 
     /*

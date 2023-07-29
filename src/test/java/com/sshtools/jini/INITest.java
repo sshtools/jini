@@ -18,17 +18,70 @@ package com.sshtools.jini;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.INIReader.DuplicateAction;
 
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.UUID;
 
 public class INITest {
+    @Test
+    public void testReadFromString() throws Exception {
+        var ini = INI.fromString(getBasicIni());
+        assertBasic(ini);
+        assertBasicOrder(ini);
+        assertBasicInsensitive(ini);
+    } 
+    
+    @Test
+    public void testReadFromBadString() throws Exception {
+        assertThrows(IllegalStateException.class, () -> INI.fromString(getBadIni()));
+    }
+
+    @Test
+    public void testReadFromFile() throws Exception {
+        var tf = Files.createTempFile("jini", ".ini");
+        try(var out = Files.newOutputStream(tf)) {
+            out.write(getBasicIni().getBytes());
+        }
+        var ini = INI.fromFile(tf);
+        assertBasic(ini);
+        assertBasicOrder(ini);
+        assertBasicInsensitive(ini);
+    }
+
+    @Test
+    public void testFailReadFromFile() throws Exception {
+         assertThrows(UncheckedIOException.class, () -> INI.fromFile(Paths.get(UUID.randomUUID().toString())));
+    }
+
+    @Test
+    public void testFailReadFromReader() throws Exception {
+         assertThrows(UncheckedIOException.class, () -> {
+             INI.fromReader(new Reader() {
+                
+                @Override
+                public int read(char[] cbuf, int off, int len) throws IOException {
+                    throw new IOException("Bang");
+                }
+                
+                @Override
+                public void close() throws IOException {
+                }
+            });
+         });
+    }
 
     @Test
     public void testCreateAndDeleteSections() throws IOException, ParseException {
@@ -38,6 +91,8 @@ public class INITest {
         assertEquals(1, ini.sections().size());
         assertEquals("Section1", sec1.key());
         assertEquals("Section1", ini.section("Section1").key());
+        assertEquals(ini, sec1.document());
+        assertThrows(IllegalStateException.class, () -> sec1.parent());
         
         var sec2 = sec1.create("Section2");
         assertEquals(1, ini.sections().size());
@@ -50,13 +105,27 @@ public class INITest {
         assertEquals(1, sec1.sections().size());
         assertEquals("Section3", sec3.key());
         assertEquals("Section3", sec2.section("Section3").key());
-        sec2.create("Section3a");
+        var sec3a = sec2.create("Section3a");
+        assertEquals(ini, sec3a.document());
         assertEquals(2, sec2.sections().size());
         
         var sec4 = ini.create("Section1a", "Section2", "Section4");
         assertEquals(2, ini.sections().size());
         assertEquals(2, sec2.sections().size());
         assertEquals("Section4", sec4.key());
+        
+        assertEquals(sec4, ini.section("Section1a", "Section2", "Section4"));
+        assertArrayEquals(new Section[] { ini.section("Section1a", "Section2"), ini.section("Section1a")}, sec4.parents());
+        assertArrayEquals(new String[] { "Section1a", "Section2", "Section4" }, sec4.path());
+        
+        sec4.remove();
+        var sec4sec2 = ini.section("Section1a", "Section2");
+        assertEquals(0, sec4sec2.sections().size());
+        sec4sec2.remove();
+        var sec4sec1a = ini.section("Section1a");
+        assertEquals(0, sec4sec2.sections().size());
+        sec4sec1a.remove();
+        assertEquals(1, ini.sections().size());
     }
     
     @Test
@@ -216,5 +285,99 @@ public class INITest {
         assertTrue(ini.getAllOr("A_Missing_String_ARRAY").isEmpty());
         assertArrayEquals(new String[] { "zz", "xx" },
                 ini.getAllOr("A_Missing_String_ARRAY", new String[] { "zz", "xx" }));
+    }
+    
+    static void assertBasicCaseSensitive(INI ini) {
+        assertFalse(ini.sections().containsKey("section1"));
+        var sec1 = ini.section("Section1");
+        assertFalse(sec1.values().containsKey("key1"));        
+        assertFalse(sec1.values().containsKey("key2"));
+        assertFalse(sec1.values().containsKey("key 3"));
+        assertFalse(sec1.values().containsKey("key4"));
+    }
+
+    static void assertBasicInsensitive(INI ini) {
+        var sec1 = ini.section("Section1");
+        assertEquals("Value1", sec1.get("key1"));
+        assertEquals("Value2", sec1.get("key 2"));
+        assertEquals("Value 3", sec1.get("key 3"));
+        assertEquals("Value 4", sec1.get("key4"));
+        assertTrue(ini.sections().containsKey("section1"));
+    }
+
+    static void assertBasic(INI ini) {
+        assertEquals(5, ini.values().size());
+        assertEquals("RootVal1", ini.get("Root 1"));
+        assertEquals("RootVal2", ini.get("Root2"));
+        assertEquals("Root Val 3", ini.get("Root 3"));
+        assertEquals("Root Val 4", ini.get("Root 4"));
+        assertEquals("Root Val 5", ini.get("Root 5"));
+        assertEquals(3, ini.sections().size());
+        assertTrue(ini.sections().containsKey("Section1"));
+        assertTrue(ini.sections().containsKey("Section2"));
+        assertTrue(ini.sections().containsKey("Section3"));
+        var sec1 = ini.section("Section1");
+        assertEquals("Value1", sec1.get("Key1"));
+        assertEquals("Value2", sec1.get("Key 2"));
+        assertEquals("Value 3", sec1.get("Key 3"));
+        assertEquals("Value 4", sec1.get("Key4"));
+        var sec2 = ini.section("Section2");
+        assertEquals("Value1-2", sec2.get("Key1-2"));
+        assertEquals("Value2-2", sec2.get("Key 2-2"));
+        assertEquals("Value 3-2", sec2.get("Key 3-2"));
+        assertEquals("Value 4-2", sec2.get("Key4-2"));
+        var sec3 = ini.section("Section3");
+        assertEquals("Value1-3", sec3.get("Key1-3"));
+        assertEquals("Value2-3", sec3.get("Key 2-3"));
+        assertEquals("Value 3-3", sec3.get("Key 3-3"));
+        assertEquals("Value 4-3", sec3.get("Key4-3"));
+    }
+
+
+    static String getBadIni() {
+        return """
+            Key1 = Val 1
+            [Sec1
+                """;
+    }
+
+    static String getBasicIni() {
+        return """
+                ; Some Comment
+                Root 1 = RootVal1
+                Root2 = RootVal2
+                Root 3 = Root Val 3
+                Root 4 = 'Root Val 4'
+                Root 5 = "Root Val 5"
+
+                ; Another Comment
+                [Section1]
+                Key1 = Value1
+                Key 2 = Value2
+                Key 3 = 'Value 3'
+                Key4=\"Value 4\"
+
+                ; Yet Another Comment
+                [Section2]
+                Key1-2 = Value1-2
+                Key 2-2 = Value2-2
+                Key 3-2 = 'Value 3-2'
+                Key4-2=\"Value 4-2\"
+
+                ; Yet Another Comment
+                [Section3]
+                Key1-3 = Value1-3
+                Key 2-3 = Value2-3
+                Key 3-3 = 'Value 3-3'
+                Key4-3=\"Value 4-3\"
+                """;
+    }
+
+    static void assertBasicOrder(INI ini) {
+        assertEquals("Root 1,Root2,Root 3,Root 4,Root 5", String.join(",", ini.values().keySet().toArray(new String[0])));
+        assertEquals("Key1,Key 2,Key 3,Key4", String.join(",", ini.section("Section1").values().keySet().toArray(new String[0])));
+        assertEquals("Key1-2,Key 2-2,Key 3-2,Key4-2", String.join(",", ini.section("Section2").values().keySet().toArray(new String[0])));
+        assertEquals("Key1-3,Key 2-3,Key 3-3,Key4-3", String.join(",", ini.section("Section3").values().keySet().toArray(new String[0])));
+        assertEquals("Section1,Section2,Section3", String.join(",", ini.sections().keySet().toArray(new String[0])));
     }
 }

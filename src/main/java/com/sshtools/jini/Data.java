@@ -133,8 +133,17 @@ public interface Data {
         }
 
         @Override
-        public Optional<Section[]> allSectionsOr(String key) {
-            return Optional.ofNullable(sections.get(key));
+        public Optional<Section[]> allSectionsOr(String... path) {
+            Data current = this;
+            Section[] sections = null;
+            for(var key : path) {
+                sections = current.sections().get(key);
+                if(sections == null)
+                    return Optional.empty();
+                else
+                    current = sections[0];
+            }
+            return Optional.ofNullable(sections);
         }
 
         @Override
@@ -189,9 +198,18 @@ public interface Data {
      */
     Map<String, Section[]> sections();
 
-    default Section section(String key) {
-        return sectionOr(key)
-                .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with key {0}", key)));
+    /**
+     * Get a {@link Section} given it's its path relative to this document or parent
+     * section. If there are no sections with such a path, an {@link IllegalArgumentException} will
+     * be thrown. If there are more than one sections with such a path, the
+     * first section will be returned.
+     * 
+     * @param path path to section 
+     * @return optional section 
+     */
+    default Section section(String... path) {
+        return sectionOr(path)
+                .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with path {0}", String.join(".", path))));
     }
     
     /**
@@ -516,16 +534,16 @@ public interface Data {
     }
 
     /**
-     * Get a {@link Section} given it's its key relative to this document or parent
-     * section. If there are no sections with such a key, {@link Optional#isEmpty()} will
-     * return <code>true</code>. If there are more than one sections with such a key, the
+     * Get a {@link Section} given it's its path relative to this document or parent
+     * section. If there are no sections with such a path, {@link Optional#isEmpty()} will
+     * return <code>true</code>. If there are more than one sections with such a path, the
      * first section will be returned.
      * 
-     * @param key section key
+     * @param path path to section 
      * @return optional section 
      */
-    default Optional<Section> sectionOr(String key) {
-        var all = allSectionsOr(key);
+    default Optional<Section> sectionOr(String... path) {
+        var all = allSectionsOr(path);
         if (all.isEmpty())
             return Optional.empty();
         else {
@@ -538,27 +556,27 @@ public interface Data {
     }
 
     /**
-     * Get all sections with the given key that is relative to this document or parent. If
-     * there are no sections with such a key, an {@link IllegalArgumentException} will be thrown.
+     * Get all sections with the given path that is relative to this document or parent. If
+     * there are no sections with such a path, an {@link IllegalArgumentException} will be thrown.
      * An empty array will never be returned.
      *  
-     * @param key key 
-     * @return sections with key
+     * @param path path to section 
+     * @return sections with path
      */
-    default Section[] allSections(String key) {
-        return allSectionsOr(key)
-                .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with key {0}", key)));
+    default Section[] allSections(String... path) {
+        return allSectionsOr(path)
+                .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with path {0}", String.join(".", path))));
     }
 
     /**
-     * Get all sections with the given key that is relative to this document or parent. 
-     * If there are no sections with such a key, {@link Optional#isEmpty()} will
+     * Get all sections with the given path that is relative to this document or parent. 
+     * If there are no sections with such a path, {@link Optional#isEmpty()} will
      * return <code>true</code>. An empty array will never be returned.
      * 
-     * @param key section key
-     * @return optional sections with key
+     * @param path path to section
+     * @return optional sections with path
      */
-    Optional<Section[]> allSectionsOr(String key);
+    Optional<Section[]> allSectionsOr(String... path);
 
     /**
      * Create either a single section inside this document or parent section, or create 
