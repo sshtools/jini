@@ -20,7 +20,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
- * Currently requires JDK 17 (may backport to Java 11 if there is any interest)
+ * Requires JDK 11 or above (JDK 17 for tests)
  
 ## WIP
 
