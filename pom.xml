@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>jini</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.0</version>
     <name>Simple Json Configuration</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
