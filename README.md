@@ -33,8 +33,8 @@ Available on Maven Central, so just add the following dependency to your project
 ```xml
 <dependency>
     <groupId>com.sshtools</groupId>
-    <artifactId>com.sshtools</artifactId>
-    <version>0.1.0</version>
+    <artifactId>jini</artifactId>
+    <version>0.2.0</version>
 </dependency>
     
 ```
