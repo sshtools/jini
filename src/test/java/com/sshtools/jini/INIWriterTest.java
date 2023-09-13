@@ -11,62 +11,51 @@ public class INIWriterTest {
 
     @Test
     public void testMultiValueModeRepeatedKey() throws Exception {
-        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read("""
-                Key1 = Val1
-                Key1 = Val2
-                Key1 = Val3
-                Key1 = Val4
-                """);
+        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read(
+                "Key1 = Val1\n" +
+                "Key1 = Val2\n" + 
+                "Key1 = Val3\n" +
+                "Key1 = Val4\n");
         
         var wrtr = new INIWriter.Builder().
                 build();
         
         assertEquals(
-                """
-                Key1 = Val1
-                Key1 = Val2
-                Key1 = Val3
-                Key1 = Val4
-                """, wrtr.write(ini));
+                "Key1 = Val1\n" +
+                "Key1 = Val2\n" +
+                "Key1 = Val3\n" +
+                "Key1 = Val4\n", wrtr.write(ini));
     }
 
     @Test
     public void testMultiValueModeSeparated() throws Exception {
-        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read("""
-                Key1 = Val1
-                Key1 = Val2
-                Key1 = Val3
-                Key1 = Val4
-                """);
+        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read(
+                "Key1 = Val1\n" +
+                "Key1 = Val2\n" +
+                "Key1 = Val3\n" +
+                "Key1 = Val4\n");
         
         var wrtr = new INIWriter.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
                 build();
         
-        assertEquals(
-                """
-                Key1 = Val1, Val2, Val3, Val4
-                """, wrtr.write(ini));
+        assertEquals("Key1 = Val1, Val2, Val3, Val4\n", wrtr.write(ini));
     }
 
 
     @Test
     public void testMultiValueModeSeparatedWithoutSpace() throws Exception {
-        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read("""
-                Key1 = Val1
-                Key1 = Val2
-                Key1 = Val3
-                Key1 = Val4
-                """);
+        var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read(
+                "Key1 = Val1\n" +
+                "Key1 = Val2\n" +
+                "Key1 = Val3\n" +
+                "Key1 = Val4\n");
         
         var wrtr = new INIWriter.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
                 withoutTrimmedValue().
                 build();
         
-        assertEquals(
-                """
-                Key1 = Val1,Val2,Val3,Val4
-                """, wrtr.write(ini));
+        assertEquals("Key1 = Val1,Val2,Val3,Val4\n", wrtr.write(ini));
     }
 }

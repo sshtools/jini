@@ -457,7 +457,7 @@ public final class INIReader extends AbstractIO {
             lineBuffer.setLength(0);
             var lineWithoutLeading = fullLine.stripLeading();
 
-            if (comments && lineWithoutLeading.charAt(0) == commentCharacter) {
+            if (lineWithoutLeading.length() == 0 || ( comments &&  lineWithoutLeading.charAt(0) == commentCharacter)) {
                 continue;
             }
 

@@ -21,11 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.sshtools.jini.INI.Section;
-import com.sshtools.jini.INIReader.DuplicateAction;
-
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -34,6 +29,12 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.Test;
+
+import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIReader.DuplicateAction;
 
 public class INITest {
 
@@ -185,16 +186,15 @@ public class INITest {
 
     @Test
     public void testAllSections() throws IOException, ParseException {
-        var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.APPEND).build().read("""
-                [Section1]
-                S1aK1 = V1
-                [Section1]
-                S1bK1 = V2
-                [Section1]
-                S1cK1 = V3
-                """);
+        var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.APPEND).build().read(
+                "[Section1]\n" +
+                "S1aK1 = V1\n" +
+                "[Section1]\n" +
+                "S1bK1 = V2\n" +
+                "[Section1]\n" +
+                "S1cK1 = V3\n");
         assertEquals(Arrays.asList("Section1", "Section1", "Section1"),
-                Arrays.asList(ini.allSections("Section1")).stream().map(s -> s.key()).toList());
+                Arrays.asList(ini.allSections("Section1")).stream().map(s -> s.key()).collect(Collectors.toList()));
         assertTrue(ini.sectionOr("SectionX").isEmpty());
         assertTrue(ini.allSectionsOr("SectionX").isEmpty());
     }
@@ -236,43 +236,42 @@ public class INITest {
     @Test
     public void testGetTypes() throws IOException, ParseException {
         var ini = new INIReader.Builder().withoutNestedSections().withDuplicateKeysAction(DuplicateAction.APPEND)
-                .build().read("""
-                        A_String = HelloWorld!
-                        A_Boolean = TRUE
-                        An_Integer = 12
-                        A_Float = 456.789
-                        A_Long = 12345678901234
-                        A_Double = 12345678901234.12345678901234
-                        A_Short = 345
-                        A_Boolean_ARRAY = TRUE
-                        A_Boolean_ARRAY = false
-                        A_Boolean_ARRAY = True
-                        A_Boolean_ARRAY = FALSE
-                        An_Integer_ARRAY = 1
-                        An_Integer_ARRAY = 2
-                        An_Integer_ARRAY = 3
-                        An_Integer_ARRAY = 4
-                        An_Integer_ARRAY = 5
-                        A_Float_ARRAY = 111.222
-                        A_Float_ARRAY = 777.333
-                        A_Float_ARRAY = 898.676
-                        A_Long_ARRAY = 345457856321234
-                        A_Long_ARRAY = 923234568524587
-                        A_Long_ARRAY = 675621354569053
-                        A_Long_ARRAY = 679452356886031
-                        A_Double_ARRAY = 34436346234235.2323423423525
-                        A_Double_ARRAY = 789784563235345.589344583458
-                        A_Double_ARRAY = 91298234782345.13264136
-                        A_Short_ARRAY = 789
-                        A_Short_ARRAY = 2121
-                        A_Short_ARRAY = 343
-                        A_Short_ARRAY = 4346
-                        A_Short_ARRAY = 5111
-                        A_String_ARRAY = ABCDEFGHIJKLM
-                        A_String_ARRAY = NOPQRSTUVWXYZ
-                        A_String_ARRAY = abcdefghijklm
-                        A_String_ARRAY = nopqrstuvwxyz
-                        """);
+                .build().read(
+                        "A_String = HelloWorld!\n" + 
+                        "A_Boolean = TRUE\n" + 
+                        "An_Integer = 12\n" + 
+                        "A_Float = 456.789\n" + 
+                        "A_Long = 12345678901234\n" + 
+                        "A_Double = 12345678901234.12345678901234\n" + 
+                        "A_Short = 345\n" + 
+                        "A_Boolean_ARRAY = TRUE\n" + 
+                        "A_Boolean_ARRAY = false\n" + 
+                        "A_Boolean_ARRAY = True\n" + 
+                        "A_Boolean_ARRAY = FALSE\n" + 
+                        "An_Integer_ARRAY = 1\n" + 
+                        "An_Integer_ARRAY = 2\n" + 
+                        "An_Integer_ARRAY = 3\n" + 
+                        "An_Integer_ARRAY = 4\n" + 
+                        "An_Integer_ARRAY = 5\n" + 
+                        "A_Float_ARRAY = 111.222\n" + 
+                        "A_Float_ARRAY = 777.333\n" + 
+                        "A_Float_ARRAY = 898.676\n" + 
+                        "A_Long_ARRAY = 345457856321234\n" + 
+                        "A_Long_ARRAY = 923234568524587\n" + 
+                        "A_Long_ARRAY = 675621354569053\n" + 
+                        "A_Long_ARRAY = 679452356886031\n" + 
+                        "A_Double_ARRAY = 34436346234235.2323423423525\n" + 
+                        "A_Double_ARRAY = 789784563235345.589344583458\n" + 
+                        "A_Double_ARRAY = 91298234782345.13264136\n" + 
+                        "A_Short_ARRAY = 789\n" + 
+                        "A_Short_ARRAY = 2121\n" + 
+                        "A_Short_ARRAY = 343\n" + 
+                        "A_Short_ARRAY = 4346\n" + 
+                        "A_Short_ARRAY = 5111\n" + 
+                        "A_String_ARRAY = ABCDEFGHIJKLM\n" + 
+                        "A_String_ARRAY = NOPQRSTUVWXYZ\n" + 
+                        "A_String_ARRAY = abcdefghijklm\n" +
+                        "A_String_ARRAY = nopqrstuvwxyz\n");
 
         assertTypes(ini);
 
@@ -428,42 +427,37 @@ public class INITest {
     }
 
     static String getBadIni() {
-        return """
-                Key1 = Val 1
-                [Sec1
-                    """;
+        return "\nKey1 = Val 1\n[Sec1\n";
     }
 
     static String getBasicIni() {
-        return """
-                ; Some Comment
-                Root 1 = RootVal1
-                Root2 = RootVal2
-                Root 3 = Root Val 3
-                Root 4 = 'Root Val 4'
-                Root 5 = "Root Val 5"
-
-                ; Another Comment
-                [Section1]
-                Key1 = Value1
-                Key 2 = Value2
-                Key 3 = 'Value 3'
-                Key4=\"Value 4\"
-
-                ; Yet Another Comment
-                [Section2]
-                Key1-2 = Value1-2
-                Key 2-2 = Value2-2
-                Key 3-2 = 'Value 3-2'
-                Key4-2=\"Value 4-2\"
-
-                ; Yet Another Comment
-                [Section3]
-                Key1-3 = Value1-3
-                Key 2-3 = Value2-3
-                Key 3-3 = 'Value 3-3'
-                Key4-3=\"Value 4-3\"
-                """;
+        return "; Some Comment\n" +
+               "Root 1 = RootVal1\n" +
+               "Root2 = RootVal2\n" +
+               "Root 3 = Root Val 3\n" +
+               "Root 4 = 'Root Val 4'\n" +
+               "Root 5 = \"Root Val 5\"\n" +
+               "\n" +
+               "; Another Comment\n" +
+               "[Section1]\n" +
+               "Key1 = Value1\n" +
+               "Key 2 = Value2\n" +
+               "Key 3 = 'Value 3'\n" +
+               "Key4=\"Value 4\"\n" +
+               "\n" +
+               "; Yet Another Comment\n" +
+               "[Section2]\n" +
+               "Key1-2 = Value1-2\n" +
+               "Key 2-2 = Value2-2\n" +
+               "Key 3-2 = 'Value 3-2'\n" +
+               "Key4-2=\"Value 4-2\"\n" +
+               "\n" +
+               "; Yet Another Comment\n" +
+               "[Section3]\n" +
+               "Key1-3 = Value1-3\n" +
+               "Key 2-3 = Value2-3\n" +
+               "Key 3-3 = 'Value 3-3'\n" +
+               "Key4-3=\"Value 4-3\"\n";
     }
 
     static void assertBasicOrder(INI ini) {

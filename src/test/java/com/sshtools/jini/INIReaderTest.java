@@ -61,12 +61,11 @@ public class INIReaderTest {
     public void testAbortDuplicateSection() throws IOException, ParseException {
         assertThrows(ParseException.class, () -> {
             new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.ABORT)
-                    .build().read("""
-                            [Section1]
-                            S1aK1 = V1
-                            [Section1]
-                            S1bK1 = V2
-                            """); 
+                    .build().read(
+                            "[Section1]\n" +
+                            "S1aK1 = V1\n" +
+                            "[Section1]\n" +
+                            "S1bK1 = V2\n"); 
         });
     }
     
@@ -74,22 +73,20 @@ public class INIReaderTest {
     public void testAbortDuplicateKeys() throws IOException, ParseException {
         assertThrows(ParseException.class, () -> {
             new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.ABORT)
-                    .build().read("""
-                            S1aK1 = V1
-                            S1bK1 = V2
-                            S1aK1 = V2
-                            """); 
+                    .build().read(
+                            "S1aK1 = V1\n" +
+                            "S1bK1 = V2\n" +
+                            "S1aK1 = V2\n"); 
         });
     }
     
     @Test
     public void testIgnoreDuplicateKeys() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.IGNORE)
-                .build().read("""
-                        S1aK1 = V1
-                        S1bK1 = V2
-                        S1aK1 = V3
-                        """); 
+                .build().read(
+                        "S1aK1 = V1\n" +
+                        "S1bK1 = V2\n" +
+                        "S1aK1 = V3\n"); 
         assertEquals(2, ini.values().size());
         assertEquals("V1", ini.get("S1aK1"));
         assertEquals("V2", ini.get("S1bK1"));
@@ -98,11 +95,10 @@ public class INIReaderTest {
     @Test
     public void testReplaceDuplicateKeys() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.REPLACE)
-                .build().read("""
-                        S1aK1 = V1
-                        S1bK1 = V2
-                        S1aK1 = V3
-                        """); 
+                .build().read(
+                        "S1aK1 = V1\n" +
+                        "S1bK1 = V2\n" + 
+                        "S1aK1 = V3\n"); 
         assertEquals(2, ini.values().size());
         assertEquals("V3", ini.get("S1aK1"));
         assertEquals("V2", ini.get("S1bK1"));
@@ -111,14 +107,13 @@ public class INIReaderTest {
     @Test
     public void testMergeDuplicateSection() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.MERGE)
-                .build().read("""
-                        [Section1]
-                        S1aK1 = V1
-                        [Section1]
-                        S1bK1 = V2
-                        [Section1]
-                        S1cK1 = V3
-                        """); 
+                .build().read(
+                        "[Section1]\n" +
+                        "S1aK1 = V1\n" +
+                        "[Section1]\n" +
+                        "S1bK1 = V2\n"  +
+                        "[Section1]\n"  +
+                        "S1cK1 = V3\n"); 
         assertEquals(1, ini.sections().size());
         var sec1 = ini.section("Section1");
         assertEquals(3, sec1.values().size());
@@ -130,11 +125,10 @@ public class INIReaderTest {
     @Test
     public void testMergeDuplicateKeys() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.MERGE)
-                .build().read("""
-                        S1aK1 = V1
-                        S1aK1 = V2
-                        S1aK1 = V3
-                        """); 
+                .build().read(
+                        "S1aK1 = V1\n" +
+                        "S1aK1 = V2\n" +
+                        "S1aK1 = V3\n"); 
         assertEquals(1, ini.values().size());
         assertArrayEquals(new String[] { "V1", "V2", "V3" }, ini.getAll("S1aK1"));
     }
@@ -142,14 +136,13 @@ public class INIReaderTest {
     @Test
     public void testAppendDuplicateSection() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.APPEND)
-                .build().read("""
-                        [Section1]
-                        S1aK1 = V1
-                        [Section1]
-                        S1bK1 = V2
-                        [Section1]
-                        S1cK1 = V3
-                        """); 
+                .build().read(
+                        "[Section1]\n" +
+                        "S1aK1 = V1\n" +
+                        "[Section1]\n" +
+                        "S1bK1 = V2\n" +
+                        "[Section1]\n" +
+                        "S1cK1 = V3\n"); 
         assertEquals(1, ini.sections().size());
         var sec1 = ini.section("Section1");
         assertEquals(3, sec1.values().size());
@@ -161,14 +154,13 @@ public class INIReaderTest {
     @Test
     public void testReplaceDuplicateSection() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.REPLACE)
-                .build().read("""
-                        [Section1]
-                        S1aK1 = V1
-                        [Section1]
-                        S1bK1 = V2
-                        [Section1]
-                        S1cK1 = V3
-                        """); 
+                .build().read(
+                        "[Section1]\n" +
+                        "S1aK1 = V1\n" +
+                        "[Section1]\n" +
+                        "S1bK1 = V2\n" +
+                        "[Section1]\n" +
+                        "S1cK1 = V3\n"); 
         assertEquals(1, ini.sections().size());
         var sec1 = ini.section("Section1");
         assertEquals(1, sec1.values().size());
@@ -178,14 +170,13 @@ public class INIReaderTest {
     @Test
     public void testIgnoreDuplicateSection() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateSectionAction(DuplicateAction.IGNORE)
-                .build().read("""
-                        [Section1]
-                        S1aK1 = V1
-                        [Section1]
-                        S1bK1 = V2
-                        [Section1]
-                        S1cK1 = V3
-                        """); 
+                .build().read(
+                        "[Section1]\n" +
+                        "S1aK1 = V1\n" +
+                        "[Section1]\n" +
+                        "S1bK1 = V2\n" +
+                        "[Section1]\n" +
+                        "S1cK1 = V3\n"); 
         assertEquals(1, ini.sections().size());
         var sec1 = ini.section("Section1");
         assertEquals("V1", sec1.get("S1aK1"));
@@ -196,13 +187,12 @@ public class INIReaderTest {
     @Test
     public void testNestedSections() throws Exception {
         var ini = new INIReader.Builder().
-                build().read("""
-                Key1 = Val1
-                [Section1]
-                S1Key1 = S1Val1
-                [Section1.Section2]
-                S1S2Key1 = S1S2Val1
-                """);
+                build().read(
+                "Key1 = Val1\n" +
+                "[Section1]\n" +
+                "S1Key1 = S1Val1\n" +
+                "[Section1.Section2]\n" +
+                "S1S2Key1 = S1S2Val1\n");
         assertEquals("Val1", ini.get("Key1"));
         assertEquals(1, ini.sections().size());
         assertEquals(1, ini.values().size());
@@ -221,9 +211,8 @@ public class INIReaderTest {
     public void testSeparatedMultiValueMode() throws Exception {
         var ini = new INIReader.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
-                build().read("""
-                Key1 = Val1, Val2, Val3,Val4
-                """);
+                build().read(
+                "Key1 = Val1, Val2, Val3,Val4");
         assertEquals(1, ini.values().size());
         assertArrayEquals(new String[] {"Val1", "Val2", "Val3", "Val4"}, ini.getAll("Key1"));
     }
@@ -232,10 +221,9 @@ public class INIReaderTest {
     public void testSeparatedMultiValueModeReplaces() throws Exception {
         var ini = new INIReader.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
-                build().read("""
-                Key1 = Val1, Val2, Val3,Val4
-                Key1 = Val5
-                """);
+                build().read(
+                "Key1 = Val1, Val2, Val3,Val4\n" +
+                "Key1 = Val5\n");
         assertEquals(1, ini.values().size());
         assertArrayEquals(new String[] {"Val5"}, ini.getAll("Key1"));
     }
@@ -245,9 +233,7 @@ public class INIReaderTest {
         var ini = new INIReader.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
                 withMultiValueSeparator('/').
-                build().read("""
-                Key1 = Val1/ Val2/ Val3/Val4
-                """);
+                build().read("Key1 = Val1/ Val2/ Val3/Val4\n");
         assertEquals(1, ini.values().size());
         assertArrayEquals(new String[] {"Val1", "Val2", "Val3", "Val4"}, ini.getAll("Key1"));
     }
@@ -286,11 +272,10 @@ public class INIReaderTest {
     public void testWithoutComments() throws Exception {
         var ini = new INIReader.Builder().
                 withoutComments().
-                build().read("""
-                ;Key1 = Val1
-                Key2 = Val2
-                ;Key3 = Val3
-                """);
+                build().read(
+                ";Key1 = Val1\n" +
+                "Key2 = Val2\n" +
+                ";Key3 = Val3\n");
         assertEquals(3, ini.values().size());
         assertEquals("Val1", ini.get(";Key1"));
         assertEquals("Val2", ini.get("Key2"));
@@ -301,12 +286,11 @@ public class INIReaderTest {
     public void testCommentCharacter() throws Exception {
         var ini = new INIReader.Builder().
                 withCommentCharacter('#').
-                build().read("""
-                #Key1 = Val1
-                Key2 = Val2
-                ;Key3 = Val3
-                #Key4 = Val4
-                """);
+                build().read(
+                "#Key1 = Val1\n" +
+                "Key2 = Val2\n" +
+                ";Key3 = Val3\n" +
+                "#Key4 = Val4\n");
         assertEquals(2, ini.values().size());
         assertEquals("Val2", ini.get("Key2"));
         assertEquals("Val3", ini.get(";Key3"));
@@ -316,9 +300,7 @@ public class INIReaderTest {
     public void testValueSeparator() throws Exception {
         var ini = new INIReader.Builder().
                 withValueSeparator(':').
-                build().read("""
-                Key1= : =Val1
-                """);
+                build().read("Key1= : =Val1");
         assertEquals(1, ini.values().size());
         assertEquals("=Val1", ini.get("Key1="));
     }
@@ -327,13 +309,12 @@ public class INIReaderTest {
     public void testSectionPathSeparator() throws Exception {
         var ini = new INIReader.Builder().
                 withSectionPathSeparator('/').
-                build().read("""
-                Key1 = Val1
-                [Section1]
-                S1Key1 = S1Val1
-                [Section1/Section2]
-                S1S2Key1 = S1S2Val1
-                """);
+                build().read(
+                "Key1 = Val1\n" +
+                "[Section1]\n" +
+                "S1Key1 = S1Val1\n" +
+                "[Section1/Section2]\n" +
+                "S1S2Key1 = S1S2Val1\n");
         assertEquals(1, ini.sections().size());
         assertEquals("Section1", ini.sections().values().iterator().next()[0].key());
         assertEquals("Section2", ini.section("Section1").sections().values().iterator().next()[0].key());
@@ -343,32 +324,29 @@ public class INIReaderTest {
     public void testWithoutNestedSections() throws Exception {
         var ini = new INIReader.Builder().
                 withoutNestedSections().
-                build().read("""
-                Key1 = Val1
-                [Section1]
-                S1Key1 = S1Val1
-                [Section1.Section2]
-                S1S2Key1 = S1S2Val1
-                """);
+                build().read(
+                "Key1 = Val1\n" +
+                "[Section1]\n" +
+                "S1Key1 = S1Val1\n" +
+                "[Section1.Section2]\n" +
+                "S1S2Key1 = S1S2Val1\n");
         assertEquals(2, ini.sections().size());
     }
 
     @Test
     public void testWithoutStringQuoting() throws Exception {
-        var ini = new INIReader.Builder().withoutStringQuoting().build().read("""
-                \"Val 1\" = \"Root Val 1\"
-                'Val 2' = 'Root Val 2'
-                """);
+        var ini = new INIReader.Builder().withoutStringQuoting().build().read(
+                "\"Val 1\" = \"Root Val 1\"\n" +
+                "'Val 2' = 'Root Val 2'\n");
         assertEquals("\"Root Val 1\"", ini.get("\"Val 1\""));
         assertEquals("'Root Val 2'", ini.get("'Val 2'"));
     }
 
     @Test
     public void testWithoutValueSeparatorWhitespace() throws Exception {
-        var ini = new INIReader.Builder().withoutValueSeparatorWhitespace().build().read("""
-                Key1=Val1
-                Key2 = Val2
-                """);
+        var ini = new INIReader.Builder().withoutValueSeparatorWhitespace().build().read(
+                "Key1=Val1\n" + 
+                "Key2 = Val2\n");
         assertEquals("Val1", ini.get("Key1"));
         assertEquals("Val2", ini.get("Key2 "));
     }
@@ -382,45 +360,38 @@ public class INIReaderTest {
 
     @Test
     public void testQuoteCharacters() throws Exception {
-        var ini = new INIReader.Builder().withoutStringQuoting().build().read("""
-                `Val 1` = `Root Val 1`
-                """);
+        var ini = new INIReader.Builder().withoutStringQuoting().build().read(
+                "`Val 1` = `Root Val 1`\n");
         assertEquals("`Root Val 1`", ini.get("`Val 1`"));
     }
 
     @Test
     public void testParseExceptionsEmptyVal() throws Exception {
         assertEquals("Empty values are not allowed.", assertThrows(ParseException.class, () -> {
-            new INIReader.Builder().withoutEmptyValues().build().read("""
-                    Val 1 =
-                    """);
+            new INIReader.Builder().withoutEmptyValues().build().read("Val 1 =\n");
         }).getMessage());
     }
 
     @Test
     public void testWithoutParseExceptionsEmptyVal() throws Exception {
-        var ini = new INIReader.Builder().withoutEmptyValues().withoutParseExceptions().build().read("""
-                Val 1 =
-                """);
+        var ini = new INIReader.Builder().withoutEmptyValues().withoutParseExceptions().build().read("Val 1\n");
         assertFalse(ini.values().containsKey("Val 1"));
     }
 
     @Test
     public void testParseExceptionsBadSectionSyntax() throws Exception {
         assertEquals("Incorrect syntax for section name, no closing ']'.", assertThrows(ParseException.class, () -> {
-            new INIReader.Builder().build().read("""
-                    [Sec1
-                    Val 1 = Abcd
-                    """);
+            new INIReader.Builder().build().read(
+                    "[Sec1\n" +
+                    "Val 1 = Abcd\n");
         }).getMessage());
     }
 
     @Test
     public void testWithoutParseExceptionsBadSectionSyntax() throws Exception {
-        var ini = new INIReader.Builder().withoutParseExceptions().build().read("""
-                [Sec1
-                Val 1 = Abcd
-                """);
+        var ini = new INIReader.Builder().withoutParseExceptions().build().read(
+                "[Sec1\n" +
+                "Val 1 = Abcd\n");
         assertTrue(ini.values().containsKey("Val 1"));
     }
 
@@ -428,19 +399,17 @@ public class INIReaderTest {
     public void testParseExceptionsTrailingSectionNameContent() throws Exception {
         assertEquals("Incorrect syntax for section name, trailing content after closing ']'.",
                 assertThrows(ParseException.class, () -> {
-                    new INIReader.Builder().build().read("""
-                            [Sec1]XXX
-                            Val 1 = Abcd
-                            """);
+                    new INIReader.Builder().build().read(
+                            "[Sec1]XXX\n" +
+                            "Val 1 = Abcd\n");
                 }).getMessage());
     }
 
     @Test
     public void testWithoutParseExceptionsTrailingSectionNameContent() throws Exception {
-        var ini = new INIReader.Builder().withoutParseExceptions().build().read("""
-                [Sec1]XXX
-                Val 1 = Abcd
-                """);
+        var ini = new INIReader.Builder().withoutParseExceptions().build().read(
+                "[Sec1]XXX\n" +
+                "Val 1 = Abcd\n");
         assertTrue(ini.values().containsKey("Val 1"));
     }
 
@@ -448,25 +417,21 @@ public class INIReaderTest {
     public void testParseExceptionsNoGlobalSection() throws Exception {
         assertEquals("Global properties are not allowed, all properties must be in a [Section].",
                 assertThrows(ParseException.class, () -> {
-                    new INIReader.Builder().withoutGlobalProperties().build().read("""
-                            Val 1 = Abcd
-                            """);
+                    new INIReader.Builder().withoutGlobalProperties().build().read("Val 1 = Abcd\n");
                 }).getMessage());
     }
 
     @Test
     public void testInlineComments() throws Exception {
-        var ini = new INIReader.Builder().build().read("""
-                Key 1 = Val 1 ; Some comment
-                """);
+        var ini = new INIReader.Builder().build().read(
+                "Key 1 = Val 1 ; Some comment\n");
         assertEquals("Val 1", ini.get("Key 1"));
     }
 
     @Test
     public void testWithoutInlineComments() throws Exception {
-        var ini = new INIReader.Builder().withoutInlineComments().build().read("""
-                Key 1 = Val 1 ; Some comment
-                """);
+        var ini = new INIReader.Builder().withoutInlineComments().build().read(
+                "Key 1 = Val 1 ; Some comment\n");
         assertEquals("Val 1 ; Some comment", ini.get("Key 1"));
     }
 
