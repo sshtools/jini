@@ -15,8 +15,6 @@
  */
 package com.sshtools.jini;
 
-import com.sshtools.jini.INI.Section;
-
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,8 +22,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
+
+import com.sshtools.jini.INI.Section;
 
 /**
  * Base interface shared by both the document object {@link INI} and the sections
@@ -126,6 +127,9 @@ public interface Data {
 
         @Override
         public Optional<Section[]> allSectionsOr(String... path) {
+        	if(path.length == 0) {
+        		return Optional.of(sections().values().stream().flatMap(sections -> Arrays.asList(sections).stream()).collect(Collectors.toList()).toArray(new Section[0]));
+        	}
             Data current = this;
             Section[] sections = null;
             for(var key : path) {
@@ -591,6 +595,8 @@ public interface Data {
      * Get all sections with the given path that is relative to this document or parent. If
      * there are no sections with such a path, an {@link IllegalArgumentException} will be thrown.
      * An empty array will never be returned.
+     * <p>
+     * If no section paths are provided, all sections in this document or parent are returned.
      *  
      * @param path path to section 
      * @return sections with path
@@ -604,6 +610,8 @@ public interface Data {
      * Get all sections with the given path that is relative to this document or parent. 
      * If there are no sections with such a path, {@link Optional#isEmpty()} will
      * return <code>true</code>. An empty array will never be returned.
+     * <p>
+     * If no section paths are provided, all sections in this document or parent are returned.
      * 
      * @param path path to section
      * @return optional sections with path
