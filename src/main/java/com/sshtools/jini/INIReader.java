@@ -461,7 +461,7 @@ public final class INIReader extends AbstractIO {
                 continue;
             }
 
-            var lineChars = fullLine.toCharArray();
+            var lineChars = lineWithoutLeading.toCharArray();
             var escape = false;
             var buf = new StringBuilder();
             String key = null;
@@ -577,10 +577,11 @@ public final class INIReader extends AbstractIO {
                         var last = i == sectionPath.length - 1;
 
                         var sectionsForKey = parent.get(sectionKey);
+                        var parentSection = lastSection == null ? ini : lastSection;
 
                         if (last) {
-                            var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
-                                    lastSection == null ? ini : lastSection, sectionKey);
+							var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+                                    parentSection, sectionKey);
                             if (sectionsForKey == null) {
                                 /* Doesn't exist, just add */
                                 sectionsForKey = new Section[] { newSection };
@@ -612,9 +613,10 @@ public final class INIReader extends AbstractIO {
                             }
                         } else {
                             if (sectionsForKey == null) {
+                            	
                                 /* Doesn't exist, just add */
                                 sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
-                                        caseSensitiveSections, lastSection, sectionKey) };
+                                        caseSensitiveSections, parentSection, sectionKey) };
                                 parent.put(sectionKey, sectionsForKey);
                             }
                         }
