@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -74,11 +75,31 @@ public interface Data {
         }
 
         @Override
-        public boolean containsSection(String key) {
-            return sections.containsKey(key);
+        public boolean containsSection(String... key) {
+        	if(key.length == 0)
+        		throw new IllegalArgumentException();
+        	else if(key.length == 1)
+        		return sections.containsKey(key[0]);
+        	else {
+        		var section = this;
+        		for(var k : key) {
+        			if(section.sections.containsKey(k)) {
+        				section = section.sections.get(k)[0];
+        			}
+        			else {
+        				return false; 
+        			}
+        		}
+        		return true;
+        	}
         }
 
         @Override
+		public Set<String> keys() {
+			return values.keySet();
+		}
+
+		@Override
         public void putAll(String key, String... values) {
             this.values.put(key, nullCheck(values));
         }
@@ -215,6 +236,13 @@ public interface Data {
     }
 
     /**
+     * Get an unmodifiable set of the underlying keys.
+     * 
+     * @return map of keys in this section or document
+     */
+    Set<String> keys();
+
+    /**
      * Get an unmodifiable map of the underlying values. The returned array of values
      * will never be <code>null</code>, but may potentially be an empty array.
      * 
@@ -261,12 +289,13 @@ public interface Data {
     boolean remove(String key);
     
     /**
-     * Get whether this document or section contains a child section.
+     * Get whether this document or section contains a child section. Nested sections
+     * may be specified by provided each path element.
      * 
      * @param key key of section
      * @return document or section contains section
      */
-    boolean containsSection(String key);
+    boolean containsSection(String... key);
 
     /**
      * Put a string value into this document or section with the given key. Any existing

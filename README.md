@@ -113,6 +113,13 @@ And for writing an INI document ..
     
 ```
 
+## Changes
+
+### 0.2.4
+
+ * Added `keys()` method.
+ * Made `containsSection(String)` now support tested for nested sections by changing the signature to `containsSection(String...)`.
+
 ## Credits
 
 Uses [LinkedCaseInsensitiveMap](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/LinkedCaseInsensitiveMap.html) from Spring Utilities.
