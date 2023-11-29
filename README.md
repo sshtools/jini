@@ -118,7 +118,7 @@ And for writing an INI document ..
 ### 0.2.4
 
  * Added `keys()` method.
- * Made `containsSection(String)` now support tested for nested sections by changing the signature to `containsSection(String...)`.
+ * Made `containsSection(String)` now support testing for nested sections by changing the signature to `containsSection(String...)`.
 
 ## Credits
 
