@@ -15,14 +15,17 @@
  */
 package com.sshtools.jini;
 
+import java.io.Closeable;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -34,6 +37,95 @@ import com.sshtools.jini.INI.Section;
  * contained within that document {@link Section}. 
  */
 public interface Data {
+	
+	public enum UpdateType {
+		/**
+		 * A new key or section was added  
+		 */
+		ADD, 
+		/**
+		 * An existing key or section was removed 
+		 */
+		REMOVE, 
+		/**
+		 * An existing key or section was updated 
+		 */
+		UPDATE;
+	}
+	
+	/**
+	 * Carries information about a value update 
+	 */
+	public final static class ValueUpdateEvent {
+		private final String key;
+		private final String[] oldValues;
+		private final String[] newValues;
+
+		ValueUpdateEvent(String key, String[] oldValues, String[] newValues) {
+			super();
+			this.key = key;
+			this.oldValues = oldValues;
+			this.newValues = newValues;
+		}
+
+		public UpdateType type() {
+			if(oldValues == null && newValues != null)
+				return UpdateType.ADD;
+			else if(oldValues != null && newValues == null)
+				return UpdateType.REMOVE;
+			else
+				return UpdateType.UPDATE;
+		}
+
+		public String key() {
+			return key;
+		}
+
+		public String[] oldValues() {
+			return oldValues;
+		}
+
+		public String[] nwValues() {
+			return newValues;
+		}
+	}
+
+	/**
+	 * Carries information about a section update 
+	 */
+	public final static class SectionUpdateEvent {
+		private final UpdateType type;
+		private final Section section;
+
+		SectionUpdateEvent(UpdateType type, Section section) {
+			this.type = type;
+			this.section = section;
+		}
+
+		public UpdateType type() {
+			return type;
+		}
+
+		public Section section() {
+			return section;
+		}
+	}
+	
+	@FunctionalInterface
+	public interface Handle extends Closeable {
+		@Override
+		void close();
+	}
+	
+	@FunctionalInterface
+	public interface ValueUpdate {
+		void update(ValueUpdateEvent evt);
+	}
+	
+	@FunctionalInterface
+	public interface SectionUpdate {
+		void update(SectionUpdateEvent evt);
+	}
 
     /**
      * Abstract implementation of {@link Data}.
@@ -45,7 +137,10 @@ public interface Data {
         final boolean preserveOrder;
         final boolean caseSensitiveKeys;
         final boolean caseSensitiveSections;
-        final boolean emptyValues; 
+        final boolean emptyValues;
+        
+        final List<ValueUpdate> valueUpdate = new CopyOnWriteArrayList<>();
+        final List<SectionUpdate> sectionUpdate = new CopyOnWriteArrayList<>();
 
         AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
                 Map<String, String[]> values, Map<String, Section[]> sections) {
@@ -65,8 +160,23 @@ public interface Data {
         }
 
         @Override
+		public Handle onValueUpdate(ValueUpdate listener) {
+        	valueUpdate.add(listener);
+			return () -> valueUpdate.remove(listener);
+		}
+
+		@Override
+		public Handle onSectionUpdate(SectionUpdate listener) {
+        	sectionUpdate.add(listener);
+			return () -> sectionUpdate.remove(listener);
+		}
+
+		@Override
         public boolean remove(String key) {
-            return values.remove(key) != null;
+			var was = values.get(key);
+            var removed = values.remove(key) != null;
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, null)));
+            return removed;
         }
 
         @Override
@@ -101,39 +211,52 @@ public interface Data {
 
 		@Override
         public void putAll(String key, String... values) {
-            this.values.put(key, nullCheck(values));
+            var was = this.values.put(key, nullCheck(values));
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, values)));
         }
 
         @Override
         public void putAll(String key, int... values) {
-            this.values.put(key, nullCheck(IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s])));
+            var sval = nullCheck(IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
         public void putAll(String key, short... values) {
-            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
+            var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
         public void putAll(String key, long... values) {
-            this.values.put(key, nullCheck(LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s])));
+            var sval = nullCheck(LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
         public void putAll(String key, float... values) {
-            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
+            var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
         public void putAll(String key, double... values) {
-            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s])));
+            var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
         public void putAll(String key, boolean... values) {
-            this.values.put(key, nullCheck(arrayToList(values).stream().map(i -> {
+            var sval = nullCheck(arrayToList(values).stream().map(i -> {
                 return i.toString();
-            }).toArray((s) -> new String[s])));
+            }).toArray((s) -> new String[s]));
+			var was = this.values.put(key, sval);
+			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
         }
 
         @Override
@@ -180,6 +303,8 @@ public interface Data {
                     newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                             parent == null ? this : parent, name);
                     (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
+					var evt = new SectionUpdateEvent(UpdateType.ADD, newSection);
+					sectionUpdate.forEach(l -> l.update(evt));
                 } else {
                     if (last) {
                         newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
@@ -190,6 +315,8 @@ public interface Data {
                     } else {
                         newSection = existing[0];
                     }
+					var evt = new SectionUpdateEvent(UpdateType.UPDATE, newSection);
+					sectionUpdate.forEach(l -> l.update(evt));
                 }
                 parent = newSection;
             }
@@ -209,6 +336,8 @@ public interface Data {
                 sections.remove(section.key());
             else
                 sections.put(section.key(), l.toArray(new Section[0]));
+			var evt = new SectionUpdateEvent(UpdateType.REMOVE, section);
+			sectionUpdate.forEach(lstnr -> lstnr.update(evt));
         }
         
         private String[] nullCheck(String... objs) {
@@ -1162,6 +1291,22 @@ public interface Data {
         var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Boolean.parseBoolean(v)).toArray());
         return arr.isEmpty() ? Optional.empty() : Optional.of(toPrimitiveBooleanArray(arr.get()));
     }
+    
+    /**
+     * Receive notifications when a value is updated
+     * 
+     * @param callback callback
+     * @return handler to stop listening
+     */
+    Handle onValueUpdate(ValueUpdate listener);
+    
+    /**
+     * Receive notifications when a section is updated
+     * 
+     * @param callback callback
+     * @return handler to stop listening
+     */
+    Handle onSectionUpdate(SectionUpdate listener);
 
     private static short[] toPrimitiveShortArray(final Object[] shortList) {
         final short[] primitives = new short[shortList.length];

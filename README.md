@@ -117,6 +117,10 @@ And for writing an INI document ..
 
 ### 0.2.4
 
+ * Added `onValueUpdate()` and `onSectionUpdate()` to listen for changes to document.
+
+### 0.2.3
+
  * Added `keys()` method.
  * Made `containsSection(String)` now support testing for nested sections by changing the signature to `containsSection(String...)`.
 
