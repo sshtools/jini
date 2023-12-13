@@ -115,6 +115,13 @@ And for writing an INI document ..
 
 ## Changes
 
+### 0.2.5
+
+ * Added `Section.readOnly()` and `Document.readOnly()` to create a read-only facades.
+ * Added `INI.empty()` that returns a static empty and read-only document. 
+ * Events are fired from all parent `Section` or `INI` on value or child section change. 
+ * Added `obtainSetion()` that gets or creates sections given a path.
+
 ### 0.2.4
 
  * Added `onValueUpdate()` and `onSectionUpdate()` to listen for changes to document.

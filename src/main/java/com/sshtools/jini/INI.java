@@ -15,10 +15,9 @@
  */
 package com.sshtools.jini;
 
-import com.sshtools.jini.Data.AbstractData;
-import com.sshtools.jini.INIReader.MultiValueMode;
-
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.StringReader;
@@ -42,6 +41,10 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import com.sshtools.jini.Data.AbstractData;
+import com.sshtools.jini.INIReader.MultiValueMode;
 
 /**
  * Represents the top-level of an <strong>INI</strong> format document.
@@ -61,8 +64,23 @@ import java.util.function.Function;
  * 
  */
 public class INI extends AbstractData {
-
-    /**
+	
+	/**
+	 * Helper for lazy initialisation of an empty read onlyt document.
+	 */
+	private final static class EmptyContainer {
+		private final static INI empty = INI.create().readOnly();
+	}
+	
+	/**
+	 * Empty, read-only document
+	 */
+	
+	public final static INI empty() {
+		return EmptyContainer.empty;
+	}
+    
+	/**
      * Build {@link INI} objects. Builders may be re-used, once {@link #build()} is
      * used, any changes to the builder will not affect the created instance.
      */
@@ -201,11 +219,30 @@ public class INI extends AbstractData {
      * insensitive keys for values and sections, and insertion order will be
      * preserved.
      * 
+     * @param reader reader
      * @return document
      */
     public static INI fromReader(Reader reader) {
         try {
             return new INIReader.Builder().build().read(reader);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        } catch (ParseException e) {
+            throw new IllegalStateException("Failed to parse.", e);
+        }
+    }
+
+    /**
+     * Parse a stream that contains a document in INI format. It will have case
+     * insensitive keys for values and sections, and insertion order will be
+     * preserved.
+     * 
+     * @param in stream
+     * @return document
+     */
+    public static INI fromInput(InputStream in) {
+        try {
+            return new INIReader.Builder().build().read(new InputStreamReader(in));
         } catch (IOException ioe) {
             throw new UncheckedIOException(ioe);
         } catch (ParseException e) {
@@ -450,12 +487,11 @@ public class INI extends AbstractData {
         private final Optional<Data> parent;
         private final INI ini;
 
-        Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
-                Data parent, String key) {
-            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+        Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys,
+				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key) {
+			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections);
             this.parent = Optional.of(parent);
             this.key = key;
-
             Data p = parent;
             INI ini;
             while (true) {
@@ -466,6 +502,35 @@ public class INI extends AbstractData {
                     p = ((Section) p).parent.get();
             }
             this.ini = ini;
+		}
+
+		Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
+                Data parent, String key) {
+            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+            this.parent = Optional.of(parent);
+            this.key = key;
+            Data p = parent;
+            INI ini;
+            while (true) {
+                if (p instanceof INI) {
+                    ini = (INI) p;
+                    break;
+                } else
+                    p = ((Section) p).parent.get();
+            }
+            this.ini = ini;
+        }
+
+        /**
+         * A read-only facade to this section.
+         */
+		@Override
+        public Section readOnly() {
+    		var s = new HashMap<String, Section[]>();
+    		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
+    				.collect(Collectors.toList()).toArray(new Section[0])));
+        	return new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, 
+        			Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), parent.get(), key);
         }
 
         /**
@@ -555,6 +620,18 @@ public class INI extends AbstractData {
             return sections;
         }
 
+		@Override
+		protected void fireUpdated(AbstractData parent, String key, String[] was, String[] newVals) {
+			super.fireUpdated(parent, key, was, newVals);
+			this.parent.ifPresent(p -> ((AbstractData)p).fireUpdated(parent, key, was, newVals));
+		}
+
+		@Override
+		protected void fireSectionUpdate(AbstractData parent, Section newSection, UpdateType type) {
+			super.fireSectionUpdate(parent, newSection, type);
+			this.parent.ifPresent(p -> ((AbstractData)p).fireSectionUpdate(parent, newSection, type));
+		}
+
     }
 
     INI(boolean emptyValues, boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
@@ -565,6 +642,21 @@ public class INI extends AbstractData {
     INI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections) {
         super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
     }
+
+    /**
+     * Create a read only facade to an existing docuiment.
+     * 
+     * @param document document
+     * @return read only document
+     */
+    @Override
+    public INI readOnly() {
+		var s = new HashMap<String, Section[]>();
+		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
+				.collect(Collectors.toList()).toArray(new Section[0])));
+		return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s));
+	}
 
     @Override
     public String toString() {

@@ -60,12 +60,14 @@ public interface Data {
 		private final String key;
 		private final String[] oldValues;
 		private final String[] newValues;
+		private final Optional<Data> parent;
 
-		ValueUpdateEvent(String key, String[] oldValues, String[] newValues) {
+		ValueUpdateEvent(Optional<Data> parent, String key, String[] oldValues, String[] newValues) {
 			super();
 			this.key = key;
 			this.oldValues = oldValues;
 			this.newValues = newValues;
+			this.parent = parent;
 		}
 
 		public UpdateType type() {
@@ -77,6 +79,14 @@ public interface Data {
 				return UpdateType.UPDATE;
 		}
 
+		public Optional<Data> parentOr() {
+			return parent;
+		}
+		
+		public Data parent() {
+			return parent.orElseThrow(() -> new IllegalStateException("Has no parent."));
+		}
+
 		public String key() {
 			return key;
 		}
@@ -85,7 +95,7 @@ public interface Data {
 			return oldValues;
 		}
 
-		public String[] nwValues() {
+		public String[] newValues() {
 			return newValues;
 		}
 	}
@@ -175,9 +185,16 @@ public interface Data {
         public boolean remove(String key) {
 			var was = values.get(key);
             var removed = values.remove(key) != null;
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, null)));
+			fireUpdated(this, key, was, null);
             return removed;
         }
+
+		protected void fireUpdated(AbstractData sec, String key, String[] was, String[] newVals) {
+			var evt = new ValueUpdateEvent(Optional.of(sec), key, was, newVals);
+			valueUpdate.forEach(l -> {
+				l.update(evt);
+			});
+		}
 
         @Override
         public boolean contains(String key) {
@@ -212,42 +229,42 @@ public interface Data {
 		@Override
         public void putAll(String key, String... values) {
             var was = this.values.put(key, nullCheck(values));
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, values)));
+			fireUpdated(this, key, was, values);
         }
 
         @Override
         public void putAll(String key, int... values) {
             var sval = nullCheck(IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
         public void putAll(String key, short... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
         public void putAll(String key, long... values) {
             var sval = nullCheck(LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
         public void putAll(String key, float... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
         public void putAll(String key, double... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
@@ -256,7 +273,7 @@ public interface Data {
                 return i.toString();
             }).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			valueUpdate.forEach(l -> l.update(new ValueUpdateEvent(key, was, sval)));
+			fireUpdated(this, key, was, sval);
         }
 
         @Override
@@ -303,8 +320,7 @@ public interface Data {
                     newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                             parent == null ? this : parent, name);
                     (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
-					var evt = new SectionUpdateEvent(UpdateType.ADD, newSection);
-					sectionUpdate.forEach(l -> l.update(evt));
+					fireSectionUpdate(this, newSection, UpdateType.ADD);
                 } else {
                     if (last) {
                         newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
@@ -315,8 +331,7 @@ public interface Data {
                     } else {
                         newSection = existing[0];
                     }
-					var evt = new SectionUpdateEvent(UpdateType.UPDATE, newSection);
-					sectionUpdate.forEach(l -> l.update(evt));
+					fireSectionUpdate(this, newSection, UpdateType.UPDATE);
                 }
                 parent = newSection;
             }
@@ -324,6 +339,11 @@ public interface Data {
                 throw new IllegalArgumentException("No section path");
             return newSection;
         }
+
+		protected void fireSectionUpdate(AbstractData parent, Section newSection, UpdateType type) {
+			var evt = new SectionUpdateEvent(type, newSection);
+			sectionUpdate.forEach(l -> l.update(evt));
+		}
         
         void remove(Section section) {
             var v = sections.get(section.key());
@@ -336,8 +356,7 @@ public interface Data {
                 sections.remove(section.key());
             else
                 sections.put(section.key(), l.toArray(new Section[0]));
-			var evt = new SectionUpdateEvent(UpdateType.REMOVE, section);
-			sectionUpdate.forEach(lstnr -> lstnr.update(evt));
+            fireSectionUpdate(this, section, UpdateType.REMOVE);
         }
         
         private String[] nullCheck(String... objs) {
@@ -399,6 +418,27 @@ public interface Data {
     default Section section(String... path) {
         return sectionOr(path)
                 .orElseThrow(() -> new IllegalArgumentException(MessageFormat.format("No section with path {0}", String.join(".", path))));
+    }
+
+    /**
+     * Obtain a {@link Section} given it's its path relative to this document or parent
+     * section. Any sections missing in the path will be created. If there are more 
+     * than one sections with such a path, the first section will be returned.
+     * 
+     * @param path path to section 
+     * @return optional section 
+     */
+    default Section obtainSection(String... path) {
+    	var data = this;
+    	for(var p : path) {
+    		if(data.containsSection(p)) {
+    			data = data.section(p);
+    		}
+    		else {
+    			data = data.create(p);
+    		}
+    	}
+    	return (Section)data;
     }
     
     /**
@@ -1362,5 +1402,10 @@ public interface Data {
             l.add(v);
         return l;
     }
+
+	/**
+	 * A read-only facade to this section.
+	 */
+	Data readOnly();
 
 }

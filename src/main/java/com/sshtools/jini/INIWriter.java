@@ -180,26 +180,35 @@ public class INIWriter extends AbstractIO {
     }
 
     private String quote(String value) {
+    	return quote(quoteCharacter, stringQuoteMode, value);
+    }
+
+    public static String quote(char quoteCharacter, StringQuoteMode stringQuoteMode, String value) {
         switch (stringQuoteMode) {
         case NEVER:
-            return escape(value);
+            return escape(stringQuoteMode, value);
         case ALWAYS:
             break;
         case AUTO:
             if (!needsQuote(value))
                 return value;
         }
-        return quoteCharacter + escape(value) + quoteCharacter;
+        return quoteCharacter + escape(stringQuoteMode, value) + quoteCharacter;
     }
 
     private String[] quote(String[] values) {
-        for (int i = 0; i < values.length; i++) {
-            values[i] = quote(values[i]);
-        }
-        return values;
+    	return quote(quoteCharacter, stringQuoteMode, values);
     }
 
-    boolean needsQuote(String value) {
+    public static String[] quote(char quoteCharacter, StringQuoteMode stringQuoteMode, String[] values) {
+    	var newVals = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            newVals[i] = quote(quoteCharacter, stringQuoteMode, values[i]);
+        }
+        return newVals;
+    }
+
+    public static boolean needsQuote(String value) {
         for (var c : new char[] { ' ', '\t', ';' }) {
             if (value.indexOf(c) != -1)
                 return true;
@@ -207,7 +216,12 @@ public class INIWriter extends AbstractIO {
         return false;
     }
 
+
     private String escape(String value) {
+    	return escape(stringQuoteMode, value);
+    }
+
+    private static String escape(StringQuoteMode stringQuoteMode, String value) {
         // TODO unicode
         value = value.replace("\\", "\\\\");
         value = value.replace("\r", "\\r");
