@@ -14,5 +14,6 @@
  * limitations under the License.
  */
 module com.sshtools.jini {
-	exports com.sshtools.jini; 
+	exports com.sshtools.jini;
+	requires transitive java.prefs; 
 }

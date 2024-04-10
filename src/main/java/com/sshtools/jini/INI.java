@@ -24,6 +24,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
@@ -41,6 +42,7 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.sshtools.jini.Data.AbstractData;
@@ -212,6 +214,27 @@ public class INI extends AbstractData {
         } catch (IOException ioe) {
             throw new UncheckedIOException(ioe);
         }
+    }
+
+    /**
+     * Parse a file that contains a document in INI format if it exists. If the
+     * file does not exists, a new writable document will be returned. If it does exist,
+     * it will have case insensitive keys for values and sections, and insertion order will be
+     * preserved.
+     * 
+     * @return document
+     */
+    public static INI fromFileIfExists(Path file) {
+    	if(Files.exists(file)) {
+	        try (var in = Files.newBufferedReader(file)) {
+	            return fromReader(in);
+	        } catch (IOException ioe) {
+	            throw new UncheckedIOException(ioe);
+	        }
+    	}
+    	else {
+    		return create();
+    	}
     }
 
     /**
@@ -1218,5 +1241,50 @@ public class INI extends AbstractData {
         }
 
     }
+	@SuppressWarnings("unchecked")
+	public static Function<String, String> compound(Function<String, String>... sources)  {
+		return (k) -> {
+			for(var src : sources) {
+				var v = src.apply(k);
+				if(v != null)
+					return v;
+			}
+			return null;
+		};
+	}
+	
+	public static Function<String, String> systemProperties()  {
+		return (k) -> {
+			if(k.startsWith("sys.")) {
+				return System.getProperty(k.substring(4));
+			}
+			else if(k.startsWith("env.")) {
+				return System.getenv(k.substring(4));
+			}
+			else
+				return null;
+		};
+	}
 
+	public static String str(String text, Function<String, String> source) {
+		var pattern = Pattern.compile("\\$\\{(.*?)\\}");
+		var matcher = pattern.matcher(text);
+		var builder = new StringBuilder();
+		int i = 0;
+		while (matcher.find()) {
+			var variable = matcher.group(1);
+			var replacement = source.apply(variable);
+			builder.append(text.substring(i, matcher.start()));
+			if (replacement == null) {
+				throw new IllegalArgumentException(MessageFormat.format("Unknown string variable $\\{{0}\\}", variable));
+			} else {
+				builder.append(replacement);
+			}
+			i = matcher.end();
+
+		}
+		builder.append(text.substring(i, text.length()));
+		text = builder.toString();
+		return text;
+	}
 }

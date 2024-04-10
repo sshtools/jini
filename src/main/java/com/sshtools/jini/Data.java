@@ -182,6 +182,12 @@ public interface Data {
 		}
 
 		@Override
+		public void clear() {
+			values.clear();
+			fireUpdated(this, null, null, null);
+		}
+
+		@Override
         public boolean remove(String key) {
 			var was = values.get(key);
             var removed = values.remove(key) != null;
@@ -390,7 +396,9 @@ public interface Data {
      */
     Set<String> keys();
 
-    /**
+    void clear();
+
+	/**
      * Get an unmodifiable map of the underlying values. The returned array of values
      * will never be <code>null</code>, but may potentially be an empty array.
      * 
