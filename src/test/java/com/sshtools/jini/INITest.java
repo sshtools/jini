@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -111,6 +112,32 @@ public class INITest {
         assertBasic(ini);
         assertBasicOrder(ini);
         assertBasicInsensitive(ini);
+    }
+
+    @Test
+    public void testReadFromStream() throws Exception {
+        var ini = INI.fromInput(new ByteArrayInputStream(getBasicIni().getBytes()));
+        assertBasic(ini);
+        assertBasicOrder(ini);
+        assertBasicInsensitive(ini);
+    }
+
+    @Test
+    public void testReadOnly() throws Exception {
+    	assertThrows(UnsupportedOperationException.class, () -> {
+            var ini = INI.fromString(getBasicIni()).readOnly();
+            ini.put("abc", true);
+    	});
+    }
+
+    @Test
+    public void testEmpty() throws Exception {
+    	assertThrows(UnsupportedOperationException.class, () -> {
+            var ini = INI.empty();
+            assertEquals(0, ini.keys().size());
+            assertEquals(0, ini.sections().size());
+            ini.put("abc", true);
+    	});
     }
 
     @Test

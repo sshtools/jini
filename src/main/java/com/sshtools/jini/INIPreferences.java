@@ -87,9 +87,6 @@ public class INIPreferences {
 		}
 
 		public INIStoreBuilder withMode(Mode mode) {
-			if (customRoot.isPresent() && scope != Scope.CUSTOM) {
-				throw new IllegalArgumentException("A custom root has been set. Scope may not be used.");
-			}
 			this.mode = mode;
 			return this;
 		}
