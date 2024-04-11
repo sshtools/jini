@@ -39,6 +39,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class INIWriter extends AbstractIO {
 
     /**
+     * Use to configure when special characters in written string values are escaped.
+     */
+    public enum EscapeMode {
+        /**
+         * Special characters in strings will never be escaped with the configured escape character.
+         */
+        NEVER,
+        /**
+         * Special characters in strings will always be escaped with the configured escape character.
+         */
+        ALWAYS
+    }
+
+    /**
      * Use to configure when written string values are wrapped in quotes.
      */
     public enum StringQuoteMode {
@@ -63,6 +77,8 @@ public class INIWriter extends AbstractIO {
     public final static class Builder extends AbstractIOBuilder<Builder> {
 
         private StringQuoteMode stringQuoteMode = StringQuoteMode.AUTO;
+        private EscapeMode escapeMode = EscapeMode.ALWAYS;
+        
         private char quoteCharacter = '"';
         private boolean emptyValuesHaveSeparator = true;
 
@@ -77,6 +93,18 @@ public class INIWriter extends AbstractIO {
          */
         public Builder withEmptyValuesHaveSeparator(boolean emptyValuesHaveSeparator) {
             this.emptyValuesHaveSeparator = emptyValuesHaveSeparator;
+            return this;
+        }
+
+        /**
+         * Configure how the write behaves when writing special characters in strings 
+         * with regard to escaping. See {@link EscapeQuoteMode}.
+         * 
+         * @param escapeMode escape mode.
+         * @return this for chaining
+         */
+        public Builder withEscapeMode(EscapeMode escapeMode) {
+            this.escapeMode = escapeMode;
             return this;
         }
 
@@ -115,11 +143,13 @@ public class INIWriter extends AbstractIO {
     }
 
     private final StringQuoteMode stringQuoteMode;
+    private final EscapeMode escapeMode;
     private final char quoteCharacter;
     private final boolean emptyValuesHaveSeparator;
 
     INIWriter(Builder builder) {
         super(builder);
+        this.escapeMode = builder.escapeMode;
         this.stringQuoteMode = builder.stringQuoteMode;
         this.quoteCharacter = builder.quoteCharacter;
         this.emptyValuesHaveSeparator = builder.emptyValuesHaveSeparator;
@@ -180,30 +210,30 @@ public class INIWriter extends AbstractIO {
     }
 
     private String quote(String value) {
-    	return quote(quoteCharacter, stringQuoteMode, value);
+    	return quote(quoteCharacter, stringQuoteMode, escapeMode, value);
     }
 
-    public static String quote(char quoteCharacter, StringQuoteMode stringQuoteMode, String value) {
+    public static String quote(char quoteCharacter, StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String value) {
         switch (stringQuoteMode) {
         case NEVER:
-            return escape(stringQuoteMode, value);
+            return escape(stringQuoteMode, escapeMode, value);
         case ALWAYS:
             break;
         case AUTO:
             if (!needsQuote(value))
                 return value;
         }
-        return quoteCharacter + escape(stringQuoteMode, value) + quoteCharacter;
+        return quoteCharacter + escape(stringQuoteMode, escapeMode, value) + quoteCharacter;
     }
 
     private String[] quote(String[] values) {
-    	return quote(quoteCharacter, stringQuoteMode, values);
+    	return quote(quoteCharacter, stringQuoteMode, escapeMode, values);
     }
 
-    public static String[] quote(char quoteCharacter, StringQuoteMode stringQuoteMode, String[] values) {
+    public static String[] quote(char quoteCharacter, StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String[] values) {
     	var newVals = new String[values.length];
         for (int i = 0; i < values.length; i++) {
-            newVals[i] = quote(quoteCharacter, stringQuoteMode, values[i]);
+            newVals[i] = quote(quoteCharacter, stringQuoteMode, escapeMode, values[i]);
         }
         return newVals;
     }
@@ -218,25 +248,29 @@ public class INIWriter extends AbstractIO {
 
 
     private String escape(String value) {
-    	return escape(stringQuoteMode, value);
+    	return escape(stringQuoteMode, escapeMode, value);
     }
 
-    private static String escape(StringQuoteMode stringQuoteMode, String value) {
-        // TODO unicode
-        value = value.replace("\\", "\\\\");
-        value = value.replace("\r", "\\r");
-        value = value.replace("\n", "\\n");
-        value = value.replace("\0", "\\0");
-        value = value.replace("\b", "\\b");
-        switch (stringQuoteMode) {
-        case NEVER:
-        case ALWAYS:
-            value = value.replace("\t", "\\t");
-            break;
-        default:
-            break;
-        }
-        return value;
+    private static String escape(StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String value) {
+    	switch(escapeMode) {
+    	case ALWAYS:
+            value = value.replace("\\", "\\\\");
+            value = value.replace("\r", "\\r");
+            value = value.replace("\n", "\\n");
+            value = value.replace("\0", "\\0");
+            value = value.replace("\b", "\\b");
+            switch (stringQuoteMode) {
+            case NEVER:
+            case ALWAYS:
+                value = value.replace("\t", "\\t");
+                break;
+            default:
+                break;
+            }
+            return value;
+    	default:
+    		return value;
+    	}
     }
 
     private void writeSection(PrintWriter pw, Stack<String> path, String key, AtomicBoolean newline, Section... sections) {
