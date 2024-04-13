@@ -20,7 +20,8 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
- * Requires JDK 11 or above (JDK 17 for tests)
+ * Requires JDK 11 or above (JDK 17 for tests).
+ * Optional [Preferences](#preferences-backing-store) implementation.
  
 ## WIP
 
@@ -33,8 +34,8 @@ Available on Maven Central, so just add the following dependency to your project
 ```xml
 <dependency>
     <groupId>com.sshtools</groupId>
-    <artifactId>jini</artifactId>
-    <version>0.2.0</version>
+    <artifactId>jini-lib</artifactId>
+    <version>0.3.0</version>
 </dependency>
     
 ```
@@ -113,7 +114,76 @@ And for writing an INI document ..
     
 ```
 
+## Preferences Backing Store
+
+An optional [java.util.prefs.Preferences](https://docs.oracle.com/javase/8/docs/api/java/util/prefs/Preferences.html) implementation is available, which will
+replace the default when added to the CLASSPATH. 
+
+Instead of storing preferences in the registry, or XML files, or whatever your platform might use by default, all preferences would be stored in `.ini` files in appropriate locations.
+
+Just add the following dependency to your project's `pom.xml`.
+
+```xml
+<dependency>
+    <groupId>com.sshtools</groupId>
+    <artifactId>jini-prefs</artifactId>
+    <version>0.3.0</version>
+</dependency>
+```
+
+### Usage
+
+The `.ini` file backend will not be initialised until the first time you access a `Preferences` node. Files will not be written until the first `.put()` or `.flush()`. 
+
+```java
+	var prefs = Preferences.userRoot();
+	prefs.put("akey", "Some Value");
+```
+
+It is possible to configure INI based preferences if you do so *before* the first access to
+a `Preferences` node.
+
+```java
+	var bldr = new INIStoreBuilder().
+				withScope(Scope.USER).
+				withoutAutoFlush().
+				withName("jini.test").
+				withPath(Files.createTempDirectory("jinitestdir"));
+				
+	var store = bldr.build();
+	INIPreferences.configure(store);		
+	var prefs = Preferences.userRoot();
+	prefs.put("akey", "Some Value");
+	System.out.println(prefs.get("akey", "No value!"));
+	
+	// ...
+```
+
+You can also use this builder make use of the `Preferences` API without using the static methods in `Preferences` such as `systemRoot()`. You can create as many roots as you like (to different file paths), and make use of them in any manner you like.
+
+```java
+	var bldr = new INIStoreBuilder().
+				withScope(Scope.USER).
+				withoutAutoFlush().
+				withName("jini.test").
+				withPath(Files.createTempDirectory("jinitestdir"));
+				
+	try (var store = bldr.build()) {
+		var prefs = store.root();
+		prefs.put("akey", "Some Value");
+		System.out.println(prefs.get("akey", "No value!"));
+	}			
+```
+
+Note that a `store` is scoped, and should be closed when finished with.
+
+
 ## Changes
+
+### 0.3.0
+
+ * Added `EscapeMode` for `INIWriter` and `INIReader` that allows altering behaviour of escaping.
+ * `java.util.prefs.Preferences` implementation
 
 ### 0.2.5
 

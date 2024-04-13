@@ -15,11 +15,6 @@
  */
 package com.sshtools.jini;
 
-import com.sshtools.jini.INI.AbstractIO;
-import com.sshtools.jini.INI.AbstractIOBuilder;
-import com.sshtools.jini.INI.Section;
-import com.sshtools.jini.INIReader.MultiValueMode;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -30,6 +25,12 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.sshtools.jini.INI.AbstractIO;
+import com.sshtools.jini.INI.AbstractIOBuilder;
+import com.sshtools.jini.INI.EscapeMode;
+import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIReader.MultiValueMode;
+
 /**
  * Writes {@link INI} documents in the INI format.
  * <p>
@@ -37,20 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * and configure it accordingly before calling {@link INIWriter.Builder#build()}.
  */
 public class INIWriter extends AbstractIO {
-
-    /**
-     * Use to configure when special characters in written string values are escaped.
-     */
-    public enum EscapeMode {
-        /**
-         * Special characters in strings will never be escaped with the configured escape character.
-         */
-        NEVER,
-        /**
-         * Special characters in strings will always be escaped with the configured escape character.
-         */
-        ALWAYS
-    }
 
     /**
      * Use to configure when written string values are wrapped in quotes.
@@ -77,7 +64,6 @@ public class INIWriter extends AbstractIO {
     public final static class Builder extends AbstractIOBuilder<Builder> {
 
         private StringQuoteMode stringQuoteMode = StringQuoteMode.AUTO;
-        private EscapeMode escapeMode = EscapeMode.ALWAYS;
         
         private char quoteCharacter = '"';
         private boolean emptyValuesHaveSeparator = true;
@@ -93,18 +79,6 @@ public class INIWriter extends AbstractIO {
          */
         public Builder withEmptyValuesHaveSeparator(boolean emptyValuesHaveSeparator) {
             this.emptyValuesHaveSeparator = emptyValuesHaveSeparator;
-            return this;
-        }
-
-        /**
-         * Configure how the write behaves when writing special characters in strings 
-         * with regard to escaping. See {@link EscapeQuoteMode}.
-         * 
-         * @param escapeMode escape mode.
-         * @return this for chaining
-         */
-        public Builder withEscapeMode(EscapeMode escapeMode) {
-            this.escapeMode = escapeMode;
             return this;
         }
 
@@ -143,13 +117,11 @@ public class INIWriter extends AbstractIO {
     }
 
     private final StringQuoteMode stringQuoteMode;
-    private final EscapeMode escapeMode;
     private final char quoteCharacter;
     private final boolean emptyValuesHaveSeparator;
 
     INIWriter(Builder builder) {
         super(builder);
-        this.escapeMode = builder.escapeMode;
         this.stringQuoteMode = builder.stringQuoteMode;
         this.quoteCharacter = builder.quoteCharacter;
         this.emptyValuesHaveSeparator = builder.emptyValuesHaveSeparator;

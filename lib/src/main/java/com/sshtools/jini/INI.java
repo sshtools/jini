@@ -24,7 +24,6 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
@@ -42,7 +41,6 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.sshtools.jini.Data.AbstractData;
@@ -66,6 +64,24 @@ import com.sshtools.jini.INIReader.MultiValueMode;
  * 
  */
 public class INI extends AbstractData {
+
+    /**
+     * Use to configure when special characters in written string values are escaped.
+     */
+    public enum EscapeMode {
+        /**
+         * Special characters in strings will never be escaped with the configured escape character.
+         */
+        NEVER,
+        /**
+         * Special characters in strings will only be escaped in quoted strings.
+         */
+        QUOTED,
+        /**
+         * Special characters in strings will always be escaped with the configured escape character.
+         */
+        ALWAYS
+    }
 	
 	/**
 	 * Helper for lazy initialisation of an empty read onlyt document.
@@ -295,6 +311,7 @@ public class INI extends AbstractData {
         protected final MultiValueMode multiValueMode;
         protected final char multiValueSeparator;
         protected final boolean emptyValues;
+        protected final EscapeMode escapeMode;
 
         AbstractIO(AbstractIOBuilder<?> builder) {
             this.sectionPathSeparator = builder.sectionPathSeparator;
@@ -306,6 +323,7 @@ public class INI extends AbstractData {
             this.multiValueMode = builder.multiValueMode;
             this.multiValueSeparator = builder.multiValueSeparator;
             this.emptyValues = builder.emptyValues;
+            this.escapeMode = builder.escapeMode;
         }
     }
 
@@ -320,6 +338,20 @@ public class INI extends AbstractData {
         MultiValueMode multiValueMode = MultiValueMode.REPEATED_KEY;
         char multiValueSeparator = ',';
         boolean emptyValues = true;
+        EscapeMode escapeMode = EscapeMode.ALWAYS;
+
+        /**
+         * Configure how the write behaves when writing special characters in strings 
+         * with regard to escaping. See {@link EscapeQuoteMode}.
+         * 
+         * @param escapeMode escape mode.
+         * @return this for chaining
+         */
+        @SuppressWarnings("unchecked")
+		public B withEscapeMode(EscapeMode escapeMode) {
+            this.escapeMode = escapeMode;
+            return  (B)this;
+        }
 
         /**
          * Do not allow empty values. When reading the content, if a key's value is

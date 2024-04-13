@@ -17,6 +17,7 @@ package com.sshtools.jini;
 
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
+import com.sshtools.jini.INI.EscapeMode;
 import com.sshtools.jini.INI.LinkedCaseInsensitiveMap;
 import com.sshtools.jini.INI.Section;
 
@@ -507,7 +508,7 @@ public final class INIReader extends AbstractIO {
                     }
                     escape = false;
                 } else {
-                    if (ch == '\\') {
+                    if (ch == '\\' && (escapeMode == EscapeMode.ALWAYS || (escapeMode == EscapeMode.QUOTED && quoted != '\0'))) {
                         escape = true;
                     } else {
                         if (quoted != '\0') {

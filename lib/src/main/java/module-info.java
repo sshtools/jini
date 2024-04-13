@@ -15,5 +15,4 @@
  */
 module com.sshtools.jini {
 	exports com.sshtools.jini;
-	requires transitive java.prefs; 
 }
