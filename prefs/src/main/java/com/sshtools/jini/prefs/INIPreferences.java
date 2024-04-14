@@ -1,8 +1,5 @@
 package com.sshtools.jini.prefs;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -13,9 +10,6 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import com.sshtools.jini.Data.AbstractData;
-import com.sshtools.jini.INI;
-import com.sshtools.jini.INI.Section;
-import com.sshtools.jini.INIWriter;
 
 public class INIPreferences {
 
@@ -50,7 +44,7 @@ public class INIPreferences {
 
 		@Override
 		public final boolean getBoolean(String key, boolean def) {
-			return ini.getBooleanOr(key, def);
+			return ini.getBoolean(key, def);
 		}
 
 		@Override
@@ -60,27 +54,27 @@ public class INIPreferences {
 
 		@Override
 		public final double getDouble(String key, double def) {
-			return ini.getDoubleOr(key, def);
+			return ini.getDouble(key, def);
 		}
 
 		@Override
 		public final float getFloat(String key, float def) {
-			return ini.getFloatOr(key, def);
+			return ini.getFloat(key, def);
 		}
 
 		@Override
 		public final int getInt(String key, int def) {
-			return ini.getIntOr(key, def);
+			return ini.getInt(key, def);
 		}
 
 		@Override
 		public final long getLong(String key, long def) {
-			return ini.getLongOr(key, def);
+			return ini.getLong(key, def);
 		}
 
 		@Override
 		public final String getSpi(String key) {
-			return ini.getOr(key, null);
+			return ini.get(key, null);
 		}
 
 		@Override

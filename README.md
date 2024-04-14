@@ -111,7 +111,7 @@ And for writing an INI document ..
         System.out.format("  City: %s%n". s.get("City"));
         System.out.format("  County: %s%n". s.get("County"));
         System.out.format("  PostCode: %s%n". s.get("PostCode"));
-        System.out.format("  Tel: %s%n". s.getOr("PostCode", "N/A"));
+        System.out.format("  Tel: %s%n". s.get("PostCode", "N/A"));
     });
     
 ```
@@ -185,6 +185,7 @@ Note that a `store` is scoped, and should be closed when finished with.
 ### 0.3.1
 
  * Added string interpolation features.
+ * Renamed some getters to shorten them, and also remove an ambiguity with `getAllOr()`.
 
 ### 0.3.0
 

@@ -1,20 +1,13 @@
 package com.sshtools.jini.prefs;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.Random;
 import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +29,7 @@ public class INIPreferencesTest extends AbstractTest {
 			assertTrue(Files.exists(file));
 			
 			var ini = INI.fromFile(file);
-			assertEquals("someval", ini.getOr("key1", ""));
+			assertEquals("someval", ini.get("key1", ""));
 			assertEquals(1, ini.keys().size());
 			assertEquals(0, ini.sections().size());
 		}
@@ -56,8 +49,8 @@ public class INIPreferencesTest extends AbstractTest {
 			
 			uroot.sync();
 			
-			assertEquals("someotherval", ini.getOr("key1", ""));
-			assertTrue(ini.getBooleanOr("key2", false));
+			assertEquals("someotherval", ini.get("key1", ""));
+			assertTrue(ini.getBoolean("key2", false));
 			assertEquals(2, ini.keys().size());
 			assertEquals(0, ini.sections().size());
 		}

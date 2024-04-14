@@ -913,7 +913,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default String getOr(String key, String defaultValue) {
+    default String get(String key, String defaultValue) {
         return getOr(key).orElse(defaultValue);
     }
 
@@ -958,7 +958,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default String[] getAllOr(String key, String... defaultValues) {
+    default String[] getAllElse(String key, String... defaultValues) {
         return getAllOr(key).orElse(defaultValues);
     }
 
@@ -991,7 +991,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default double getDoubleOr(String key, double defaultValue) {
+    default double getDouble(String key, double defaultValue) {
         return getOr(key).map(i -> Double.parseDouble(i)).orElse(defaultValue);
     }
 
@@ -1026,7 +1026,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default double[] getAllDoubleOr(String key, double... defaultValues) {
+    default double[] getAllDoubleElse(String key, double... defaultValues) {
         return getAllDoubleOr(key).orElse(defaultValues);
     }
 
@@ -1061,7 +1061,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default long getLongOr(String key, long defaultValue) {
+    default long getLong(String key, long defaultValue) {
         return getOr(key).map(i -> Long.parseLong(i)).orElse(defaultValue);
     }
 
@@ -1096,7 +1096,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default long[] getAllLongOr(String key, long... defaultValues) {
+    default long[] getAllLongElse(String key, long... defaultValues) {
         return getAllLongOr(key).orElse(defaultValues);
     }
 
@@ -1131,7 +1131,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default int getIntOr(String key, int defaultValue) {
+    default int getInt(String key, int defaultValue) {
         return getOr(key).map(i -> Integer.parseInt(i)).orElse(defaultValue);
     }
 
@@ -1166,7 +1166,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default int[] getAllIntOr(String key, int... defaultValues) {
+    default int[] getAllIntElse(String key, int... defaultValues) {
         return getAllIntOr(key).orElse(defaultValues);
     }
 
@@ -1201,7 +1201,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default short getShortOr(String key, short defaultValue) {
+    default short getShort(String key, short defaultValue) {
         return getOr(key).map(i -> Short.parseShort(i)).orElse(defaultValue);
     }
 
@@ -1236,7 +1236,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default short[] getAllShortOr(String key, short... defaultValues) {
+    default short[] getAllShortElse(String key, short... defaultValues) {
         return getAllShortOr(key).orElse(defaultValues);
     }
 
@@ -1272,7 +1272,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default float getFloatOr(String key, float defaultValue) {
+    default float getFloat(String key, float defaultValue) {
         return getOr(key).map(i -> Float.parseFloat(i)).orElse(defaultValue);
     }
 
@@ -1307,7 +1307,7 @@ public interface Data {
      * @param defaultValues default values
      * @return values
      */
-    default float[] getAllFloatOr(String key, float... defaultValues) {
+    default float[] getAllFloatElse(String key, float... defaultValues) {
         return getAllFloatOr(key).orElse(defaultValues);
     }
 
@@ -1343,7 +1343,7 @@ public interface Data {
      * @param defaultValue default value
      * @return value or default
      */
-    default boolean getBooleanOr(String key, boolean defaultValue) {
+    default boolean getBoolean(String key, boolean defaultValue) {
         return getOr(key).map(i -> Boolean.parseBoolean(i)).orElse(defaultValue);
     }
 
@@ -1377,7 +1377,7 @@ public interface Data {
      * @param key key
      * @return optional value
      */
-    default boolean[] getAllBooleanOr(String key, boolean[] defaultValues) {
+    default boolean[] getAllBooleanElse(String key, boolean... defaultValues) {
         return getAllBooleanOr(key).orElse(defaultValues);
     }
 

@@ -17,6 +17,8 @@ package com.sshtools.jini;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.nio.file.Files;
@@ -96,7 +98,13 @@ public final class INIReader extends AbstractIO {
         /**
          * Multiple values are expressed as value keys repeating in the content.
          */
+    	@Deprecated
         REPEATED_KEY,
+        /**
+         * Multiple values are not allowed at all, a value will always be treated
+         * as a single value.
+         */
+        OFF,
         /**
          * Multiple values are expressed as a single key, with it's string value being
          * made up of (comma by default) separated values.
@@ -459,6 +467,33 @@ public final class INIReader extends AbstractIO {
             return read(rdr);
         }
     }
+    
+    /**
+     * Create an {@link INI} document instance by reading a stream with content in
+     * INI format. The current default character set encoding will be used.
+     * 
+     * @param input stream of INI content
+     * @return document
+     * @throws IOException    on I/O error
+     * @throws ParseException on parsing error
+     */
+    public INI read(InputStream input) throws IOException, ParseException {
+    	return read(new InputStreamReader(input));
+    }
+    
+    /**
+     * Create an {@link INI} document instance by reading a stream with content in
+     * INI format. 
+     * 
+     * @param input stream of INI content
+     * @param charset character set
+     * @return document
+     * @throws IOException    on I/O error
+     * @throws ParseException on parsing error
+     */
+    public INI read(InputStream input, String charset) throws IOException, ParseException {
+    	return read(new InputStreamReader(input, charset));
+    }
 
     /**
      * Create an {@link INI} document instance by reading a stream with content in
@@ -701,12 +736,16 @@ public final class INIReader extends AbstractIO {
                     }
 
                     String[] values;
+                    var dupAction = duplicateKeysAction;
                     if (multiValueMode == MultiValueMode.REPEATED_KEY) {
                         values = new String[] { val };
-                    } else {
+                        dupAction = DuplicateAction.APPEND;
+                    } else if(multiValueMode == MultiValueMode.SEPARATED) {
                         values = tokenize(val, multiValueSeparator);
                         if (trimmedValue)
                             values = trim(values);
+                    } else {
+                        values = new String[] { val };
                     }
 
                     var valuesForKey = sectionProperties.get(key);
@@ -714,7 +753,7 @@ public final class INIReader extends AbstractIO {
                         /* Doesn't exist, just add */
                         sectionProperties.put(key, values);
                     } else {
-                        switch (duplicateKeysAction) {
+                        switch (dupAction) {
                         case ABORT:
                             throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
                         case REPLACE:

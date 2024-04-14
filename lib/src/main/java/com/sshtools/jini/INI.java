@@ -101,6 +101,14 @@ public class INI extends AbstractData {
          */
         ALWAYS
     }
+    
+    public static String[] merge(String[]... vals) {
+    	var l = new ArrayList<String>();
+    	for(var val : vals) {
+    		l.addAll(Arrays.asList(val));
+    	}
+    	return l.toArray(new String[0]);
+    }
 	
 	/**
 	 * Helper for lazy initialisation of an empty read onlyt document.
@@ -392,7 +400,7 @@ public class INI extends AbstractData {
         char valueSeparator = '=';
         char commentCharacter = ';';
         boolean trimmedValue = true;
-        MultiValueMode multiValueMode = MultiValueMode.REPEATED_KEY;
+        MultiValueMode multiValueMode = MultiValueMode.SEPARATED;
         char multiValueSeparator = ',';
         boolean emptyValues = true;
         EscapeMode escapeMode = EscapeMode.QUOTED;
@@ -774,6 +782,45 @@ public class INI extends AbstractData {
 		return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
 				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), interpolator, variablePattern, missingVariableMode);
 	}
+
+    public enum MergeMode {
+    	FLATTEN_SECTIONS
+    }
+
+    /**
+     * Merge one or more documents to make a new document that contains all the
+     * sections and keys of both. 
+     * 
+     * @param document document
+     * @return read only document
+     */
+    public INI merge(MergeMode mergeMode, INI... others) {
+    	var newDoc = create();
+    	for(var other : others) {
+    		merge(mergeMode, newDoc, other);
+    	}
+    	return newDoc;
+    }
+
+	protected void merge(MergeMode mergeMode, AbstractData newDoc, AbstractData other) {
+		newDoc.values.putAll(other.values);
+		for(var sec : other.sections.entrySet()) {
+			switch(mergeMode) {
+			case FLATTEN_SECTIONS:
+				
+				break;
+			default:
+				throw new UnsupportedOperationException();
+			}
+//			if(newDoc.sections.containsKey(sec.getKey())) {
+//				merge(newDoc.sections.get(sec.getKey()), sec.getValue());
+//			}
+//			else {
+//				
+//			}
+		}
+	}
+    
 
     @Override
     public String toString() {
