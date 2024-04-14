@@ -15,12 +15,6 @@
  */
 package com.sshtools.jini;
 
-import com.sshtools.jini.INI.AbstractIO;
-import com.sshtools.jini.INI.AbstractIOBuilder;
-import com.sshtools.jini.INI.EscapeMode;
-import com.sshtools.jini.INI.LinkedCaseInsensitiveMap;
-import com.sshtools.jini.INI.Section;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -32,8 +26,17 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
+
+import com.sshtools.jini.INI.AbstractIO;
+import com.sshtools.jini.INI.AbstractIOBuilder;
+import com.sshtools.jini.INI.EscapeMode;
+import com.sshtools.jini.INI.LinkedCaseInsensitiveMap;
+import com.sshtools.jini.INI.MissingVariableMode;
+import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.Interpolation.Interpolator;
 
 /**
  * An {@INIReader} can read text (from files, streams or strings) in the INI
@@ -117,6 +120,44 @@ public final class INIReader extends AbstractIO {
         private DuplicateAction duplicateKeysAction = DuplicateAction.REPLACE;
         private DuplicateAction duplicateSectionAction = DuplicateAction.REPLACE;
         private char[] quoteCharacters = new char[] { '"', '\'' };
+        private Optional<Interpolator> interpolator = Optional.empty();
+        private Optional<String> variablePattern = Optional.empty();
+        private MissingVariableMode missingVariableMode = MissingVariableMode.ERROR;
+        
+        /**
+         * Configure how to react when a variable is encountered that does not exist.
+         * 
+         * @param missingVariableMode missing variable mode
+         * @return this for chaining
+         */
+        public final Builder withMissingVariableMode(MissingVariableMode missingVariableMode) {
+        	this.missingVariableMode = missingVariableMode;
+        	return this;
+        }
+        
+        /**
+         * Configure the regular expression pattern to use to extract interpolatable variables.
+         * 
+         * @param variablePattern variable pattern
+         * @return this for chaining
+         */
+        public final Builder withVariablePattern(String variablePattern) {
+        	this.variablePattern = Optional.of(variablePattern);
+        	return this;
+        }
+        
+        /**
+         * Configure an "Interpolator", that processes string values before they
+         * are returned, replacing string variable patterns. See {@link Interpolation}
+         * for some default interpolators.
+         * 
+         * @param interpolator interpolator
+         * @return this for chaining
+         */
+        public final Builder withInterpolator(Interpolator interpolator) {
+        	this.interpolator = Optional.of(interpolator);
+        	return this;
+        }
 
         /**
          * Configure either the reader to not expect any type of string quotes.
@@ -368,9 +409,13 @@ public final class INIReader extends AbstractIO {
     private final boolean inlineComments;
     private final boolean parseExceptions;
     private final char[] quoteCharacters;
+	private final Optional<Interpolator> interpolator;
+	private final Optional<String> variablePattern;
+	private final MissingVariableMode missingVariableMode;
 
     private INIReader(Builder builder) {
         super(builder);
+        this.interpolator = builder.interpolator;
         this.comments = builder.comments;
         this.globalSection = builder.globalSection;
         this.caseSensitiveKeys = builder.caseSensitiveKeys;
@@ -382,6 +427,8 @@ public final class INIReader extends AbstractIO {
         this.inlineComments = builder.inlineComments;
         this.parseExceptions = builder.parseExceptions;
         this.quoteCharacters = builder.quoteCharacters;
+        this.variablePattern = builder.variablePattern;
+        this.missingVariableMode = builder.missingVariableMode;
     }
 
     /**
@@ -432,7 +479,7 @@ public final class INIReader extends AbstractIO {
         var globalProperties = createPropertyMap(preserveOrder, caseSensitiveKeys);
         Section section = null;
 
-        var ini = new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections);
+        var ini = new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections, interpolator, variablePattern, missingVariableMode);
 
         while ((line = lineReader.readLine()) != null) {
             offset += line.length();
@@ -582,7 +629,7 @@ public final class INIReader extends AbstractIO {
 
                         if (last) {
 							var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
-                                    parentSection, sectionKey);
+                                    parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
                             if (sectionsForKey == null) {
                                 /* Doesn't exist, just add */
                                 sectionsForKey = new Section[] { newSection };
@@ -617,7 +664,7 @@ public final class INIReader extends AbstractIO {
                             	
                                 /* Doesn't exist, just add */
                                 sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
-                                        caseSensitiveSections, parentSection, sectionKey) };
+                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode) };
                                 parent.put(sectionKey, sectionsForKey);
                             }
                         }

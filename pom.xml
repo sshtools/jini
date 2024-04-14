@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>jini</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1-SNAPSHOT</version>
     <name>Java INI file reader and writer</name>
     <packaging>pom</packaging>
     <properties>
@@ -70,6 +70,7 @@
     <modules>
         <module>lib</module>
         <module>prefs</module>
+        <module>schema</module>
     </modules>
     <dependencies>
         <dependency>

@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 
 import com.sshtools.jini.Data.AbstractData;
 import com.sshtools.jini.INIReader.MultiValueMode;
+import com.sshtools.jini.Interpolation.Interpolator;
 
 /**
  * Represents the top-level of an <strong>INI</strong> format document.
@@ -64,6 +65,24 @@ import com.sshtools.jini.INIReader.MultiValueMode;
  * 
  */
 public class INI extends AbstractData {
+	
+	/**
+	 * Missing variable mode 
+	 */
+	public enum MissingVariableMode {
+		/**
+		 * An error will be thrown if a variable is missing
+		 */
+		ERROR,
+		/**
+		 * Missing variables will be interpreted as empty strings
+		 */
+		BLANK,
+		/**
+		 * Missing variables will be left as is  
+		 */
+		SKIP
+	}
 
     /**
      * Use to configure when special characters in written string values are escaped.
@@ -108,6 +127,44 @@ public class INI extends AbstractData {
         private boolean caseSensitiveSections = false;
         private boolean preserveOrder = true;
         private boolean emptyValues = true;
+        private Optional<Interpolator> interpolator = Optional.empty();
+        private Optional<String> variablePattern = Optional.empty();
+        private MissingVariableMode missingVariableMode = MissingVariableMode.ERROR;
+        
+        /**
+         * Configure how to react when a variable is encountered that does not exist.
+         * 
+         * @param missingVariableMode missing variable mode
+         * @return this for chaining
+         */
+        public final Builder withMissingVariableMode(MissingVariableMode missingVariableMode) {
+        	this.missingVariableMode = missingVariableMode;
+        	return this;
+        }
+        
+        /**
+         * Configure the regular expression pattern to use to extract interpolatable variables.
+         * 
+         * @param variablePattern variable pattern
+         * @return this for chaining
+         */
+        public final Builder withVariablePattern(String variablePattern) {
+        	this.variablePattern = Optional.of(variablePattern);
+        	return this;
+        }
+        
+        /**
+         * Configure an "Interpolator", that processes string values before they
+         * are returned, replacing string variable patterns. See {@link Interpolation}
+         * for some default interpolators.
+         * 
+         * @param interpolator interpolator
+         * @return this for chaining
+         */
+        public final Builder withInterpolator(Interpolator interpolator) {
+        	this.interpolator = Optional.of(interpolator);
+        	return this;
+        }
 
         /**
          * Configure the to not allow empty values. Any <code>null</code> or empty array
@@ -203,7 +260,7 @@ public class INI extends AbstractData {
          * @return document
          */
         public INI build() {
-            return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections);
+            return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, interpolator, variablePattern, missingVariableMode);
         }
     }
 
@@ -338,7 +395,7 @@ public class INI extends AbstractData {
         MultiValueMode multiValueMode = MultiValueMode.REPEATED_KEY;
         char multiValueSeparator = ',';
         boolean emptyValues = true;
-        EscapeMode escapeMode = EscapeMode.ALWAYS;
+        EscapeMode escapeMode = EscapeMode.QUOTED;
 
         /**
          * Configure how the write behaves when writing special characters in strings 
@@ -543,8 +600,9 @@ public class INI extends AbstractData {
         private final INI ini;
 
         Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys,
-				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key) {
-			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections);
+				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
             this.parent = Optional.of(parent);
             this.key = key;
             Data p = parent;
@@ -560,8 +618,9 @@ public class INI extends AbstractData {
 		}
 
 		Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
-                Data parent, String key) {
-            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+                Data parent, String key, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
             this.parent = Optional.of(parent);
             this.key = key;
             Data p = parent;
@@ -585,7 +644,8 @@ public class INI extends AbstractData {
     		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
     				.collect(Collectors.toList()).toArray(new Section[0])));
         	return new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, 
-        			Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), parent.get(), key);
+        			Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), parent.get(), key, interpolator,
+        			variablePattern, missingVariableMode);
         }
 
         /**
@@ -690,12 +750,14 @@ public class INI extends AbstractData {
     }
 
     INI(boolean emptyValues, boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
-            Map<String, String[]> values, Map<String, Section[]> sections) {
-        super(emptyValues, preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections);
+            Map<String, String[]> values, Map<String, Section[]> sections, Optional<Interpolator> interpolator,
+            Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+        super(emptyValues, preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
     }
 
-    INI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections) {
-        super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections);
+    INI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections, Optional<Interpolator> interpolator,
+            Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+        super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
     }
 
     /**
@@ -710,7 +772,7 @@ public class INI extends AbstractData {
 		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
 				.collect(Collectors.toList()).toArray(new Section[0])));
 		return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
-				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s));
+				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), interpolator, variablePattern, missingVariableMode);
 	}
 
     @Override

@@ -15,6 +15,9 @@
  */
 package com.sshtools.jini;
 
+import static com.sshtools.jini.Interpolation.compound;
+import static com.sshtools.jini.Interpolation.environment;
+import static com.sshtools.jini.Interpolation.systemProperties;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,6 +37,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import com.sshtools.jini.INI.MissingVariableMode;
 import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.INIReader.DuplicateAction;
 
@@ -90,11 +94,68 @@ public class INITest {
     @Test
     public void testDeleteKeys() throws Exception {
         var ini = INI.fromString(getBasicIni());
-        System.out.println(ini);
 
         assertTrue(ini.remove("Root 1"));
         assertEquals(4, ini.values().size());
         assertFalse(ini.remove("Root 1"));
+    }
+
+    @Test
+    public void testInterpolate() throws Exception {
+        var ini = new INIReader.Builder().
+        		withInterpolator(Interpolation.defaults()).
+        		build().read(getVariablesIni());
+		assertVariables(ini);
+		assertThrows(IllegalArgumentException.class, () -> {
+	        ini.get("Error 1");
+		});
+		assertThrows(IllegalArgumentException.class, () -> {
+	        ini.section("Section1").get("Error 1");
+		});
+    }
+
+    @Test
+    public void testInterpolateSkipMissing() throws Exception {
+        var ini = new INIReader.Builder().
+        		withInterpolator(compound(
+    				systemProperties(),
+    				environment())
+        		).
+        		withMissingVariableMode(MissingVariableMode.SKIP).
+        		build().read(getVariablesIni());
+		assertVariables(ini);
+		assertEquals("${xxxxx}", ini.get("Error 1"));
+		assertEquals("${xxxxx}", ini.section("Section1").get("Error 1"));
+    }
+
+    @Test
+    public void testInterpolateBlankMissing() throws Exception {
+        var ini = new INIReader.Builder().
+        		withInterpolator(compound(
+    				systemProperties(),
+    				environment())
+        		).
+        		withMissingVariableMode(MissingVariableMode.BLANK).
+        		build().read(getVariablesIni());
+		assertVariables(ini);
+		assertEquals("", ini.get("Error 1"));
+		assertEquals("", ini.section("Section1").get("Error 1"));
+    }
+
+    @Test
+    public void testInterpolateAltPattern() throws Exception {
+        var ini = new INIReader.Builder().
+        		withVariablePattern("%(.*)%").
+        		withInterpolator(Interpolation.defaults()).
+        		build().read(getWinVariablesIni());
+        
+		assertVariables(ini);
+		assertThrows(IllegalArgumentException.class, () -> {
+	        ini.get("Error 1");
+		});
+		assertThrows(IllegalArgumentException.class, () -> {
+	        ini.section("Section1").get("Error 1");
+		});
     }
 
     @Test
@@ -457,6 +518,39 @@ public class INITest {
         return "\nKey1 = Val 1\n[Sec1\n";
     }
 
+    static String getVariablesIni() {
+        return "; Some Comment\n" +
+               "Path 1 = ${env:HOME}\n" +
+               "User 1 = ${sys:user.name}\n" +
+               "Key 1 = Val 1\n" +
+               "Error 1 = ${xxxxx}\n" +
+               "\n" +
+               "; Another Comment\n" +
+               "[Section1]\n" +
+               "Path 1 = ${env:HOME}\n" +
+               "User 1 = ${sys:user.name}\n" +
+               "Key 1 = Val 1\n" +
+               "Error 1 = ${xxxxx}\n" +
+               "\n";
+    }
+
+    static String getWinVariablesIni() {
+        return "; Some Comment\n" +
+               "Path 1 = %env:HOME%\n" +
+               "User 1 = %sys:user.name%\n" +
+               "Key 1 = Val 1\n" +
+               "Error 1 = %xxxxx%\n" +
+               "\n" +
+               "; Another Comment\n" +
+               "[Section1]\n" +
+               "Path 1 = %env:HOME%\n" +
+               "User 1 = %sys:user.name%\n" +
+               "Key 1 = Val 1\n" +
+               "Error 1 = %xxxxx%\n" +
+               "\n";
+    }
+
+
     static String getBasicIni() {
         return "; Some Comment\n" +
                "Root 1 = RootVal1\n" +
@@ -486,6 +580,18 @@ public class INITest {
                "Key 3-3 = 'Value 3-3'\n" +
                "Key4-3=\"Value 4-3\"\n";
     }
+
+	static void assertVariables(INI ini) {
+		assertEquals(4, ini.size());
+        assertEquals("Val 1", ini.get("Key 1"));
+        assertEquals(System.getenv("HOME"), ini.get("Path 1"));
+        assertEquals(System.getProperty("user.name"), ini.get("User 1"));
+        var sec = ini.section("Section1");
+        assertEquals(4, sec.size());
+        assertEquals("Val 1", sec.get("Key 1"));
+        assertEquals(System.getenv("HOME"), sec.get("Path 1"));
+        assertEquals(System.getProperty("user.name"), sec.get("User 1"));
+	}
 
     static void assertBasicOrder(INI ini) {
         assertEquals("Root 1,Root2,Root 3,Root 4,Root 5",

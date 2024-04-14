@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +31,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import com.sshtools.jini.INI.MissingVariableMode;
 import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.Interpolation.Interpolator;
 
 /**
  * Base interface shared by both the document object {@link INI} and the sections
@@ -151,22 +154,32 @@ public interface Data {
         
         final List<ValueUpdate> valueUpdate = new CopyOnWriteArrayList<>();
         final List<SectionUpdate> sectionUpdate = new CopyOnWriteArrayList<>();
+        final Optional<Interpolator> interpolator;	
+
+        final Optional<String> variablePattern;
+        final MissingVariableMode missingVariableMode;
 
         AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
-                Map<String, String[]> values, Map<String, Section[]> sections) {
+                Map<String, String[]> values, Map<String, Section[]> sections, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
             super();
+            this.interpolator = interpolator; 
             this.emptyValues = emptyValues;
             this.sections = sections;
             this.values = values;
             this.preserveOrder = preserveOrder;
             this.caseSensitiveKeys = caseSensitiveKeys;
             this.caseSensitiveSections = caseSensitiveSections;
+            this.variablePattern = variablePattern;
+            this.missingVariableMode = missingVariableMode;
         }
 
-        AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections) {
+        AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
             this(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
                     INIReader.createPropertyMap(preserveOrder, caseSensitiveKeys),
-                    INIReader.createSectionMap(preserveOrder, caseSensitiveSections));
+                    INIReader.createSectionMap(preserveOrder, caseSensitiveSections), interpolator,
+                    variablePattern, missingVariableMode);
         }
 
         @Override
@@ -228,6 +241,11 @@ public interface Data {
         }
 
         @Override
+    	public int size() {
+    		return values.size();
+    	}
+    	
+        @Override
 		public Set<String> keys() {
 			return values.keySet();
 		}
@@ -284,7 +302,15 @@ public interface Data {
 
         @Override
         public Map<String, String[]> values() {
-            return Collections.unmodifiableMap(values);
+        	if(interpolator.isPresent()) {
+        		var m = new HashMap<String, String[]>();
+        		for(var en : values.entrySet()) {
+        			m.put(en.getKey(), interpolate(en.getValue()));
+        		}
+        		return Collections.unmodifiableMap(m);
+        	}
+        	else
+        		return Collections.unmodifiableMap(values);
         }
 
         @Override
@@ -311,7 +337,10 @@ public interface Data {
 
         @Override
         public Optional<String[]> getAllOr(String key) {
-            return Optional.ofNullable(values.get(key));
+        	if(interpolator.isPresent())
+        		return Optional.ofNullable(values.get(key)).map(this::interpolate);
+        	else
+        		return Optional.ofNullable(values.get(key));
         }
 
         @Override
@@ -324,13 +353,13 @@ public interface Data {
                 var existing = parent == null ? sections.get(name) : parent.sections.get(name);
                 if (existing == null) {
                     newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
-                            parent == null ? this : parent, name);
+                            parent == null ? this : parent, name, interpolator, variablePattern, missingVariableMode);
                     (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
 					fireSectionUpdate(this, newSection, UpdateType.ADD);
                 } else {
                     if (last) {
                         newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
-                                parent == null ? this : parent, name);
+                                parent == null ? this : parent, name, interpolator, variablePattern, missingVariableMode);
                         var newSections = new Section[existing.length + 1];
                         System.arraycopy(existing, 0, newSections, 0, existing.length);
                         newSections[existing.length] = newSection;
@@ -365,6 +394,28 @@ public interface Data {
             fireSectionUpdate(this, section, UpdateType.REMOVE);
         }
         
+        private String[] interpolate(String[] vals) {
+        	for(int i = 0 ; i < vals.length; i++) {
+        		vals[i] = Interpolation.str(
+        				variablePattern.orElse(Interpolation.DEFAULT_VARIABLE_PATTERN), 
+        				vals[i],
+        				Interpolation.compound(
+        					interpolator.get(),
+        					var -> {
+        						switch(missingVariableMode) {
+        						case BLANK:
+        							return "";
+        						case SKIP:
+        							return null;
+        						default:
+        							throw new IllegalArgumentException(MessageFormat.format("Unknown string variable ''{0}'''", var));
+        						}
+        					})
+        				);
+        	}
+        	return vals;
+        }
+        
         private String[] nullCheck(String... objs) {
             if(objs == null) {
                 if(emptyValues)
@@ -396,7 +447,9 @@ public interface Data {
      */
     Set<String> keys();
 
-    void clear();
+    int size();
+
+	void clear();
 
 	/**
      * Get an unmodifiable map of the underlying values. The returned array of values

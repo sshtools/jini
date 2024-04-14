@@ -35,7 +35,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.text.ParseException;
 
-public class INIReaderTest {
+public final class INIReaderTest {
+	
+	private INIReaderTest() {
+	}
 
     @Test
     public void testReadFromString() throws Exception {
@@ -454,6 +457,14 @@ public class INIReaderTest {
         var ini = new INIReader.Builder().build().read("Key 0 = \\\\Abc\\a1\\b2\\t4\\nY\\r\\;Hello\\=Argh!\\W\\0");
         System.out.println(ini);
         assertEquals(1, ini.values().size());
+        assertEquals("\\\\Abc\\a1\\b2\\t4\\nY\\r\\", ini.get("Key 0"));
+    }
+
+    @Test
+    public void testQuotedEscaped() throws Exception {
+        var ini = new INIReader.Builder().build().read("Key 0 = \"\\\\Abc\\a1\\b2\\t4\\nY\\r\\;Hello\\=Argh!\\W\\0\"");
+        System.out.println(ini);
+        assertEquals(1, ini.values().size());
         assertEquals("\\Abc" + (char)7 + "1" + (char)8 + "2" + (char)11 + "4\nY\r;Hello=Argh!\\W", ini.get("Key 0"));
     }
 
@@ -467,8 +478,8 @@ public class INIReaderTest {
         System.out.println(ini);
         assertEquals(5, ini.values().size());
         assertEquals("Val 0", ini.get("Key 0"));
-        assertEquals("Val 1", ini.get("Key 1"));
-        assertEquals("Val 2", ini.get("Key 2"));
+        assertEquals("Val 1\\", ini.get("Key 1"));
+        assertEquals("Val 2 \\", ini.get("Key 2"));
         assertEquals("Val 3", ini.get("Key 3"));
         assertEquals("Val 4", ini.get("Key 4"));
     }

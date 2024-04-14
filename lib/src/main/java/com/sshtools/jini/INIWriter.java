@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
-import com.sshtools.jini.INI.EscapeMode;
 import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.INIReader.MultiValueMode;
 
@@ -52,9 +51,15 @@ public class INIWriter extends AbstractIO {
          */
         ALWAYS,
         /**
-        * Strings will be quoted if they contain whitespace 
-        */
-        AUTO
+         * Strings will be quoted if they contain any escaped characters, the
+         * comment character, the value separator, the multi-value separator or whitespace 
+         */
+        AUTO,
+        /**
+         * Strings will be quoted if they contain any escape characters, the 
+         * comment character, the value separator, or the multi-value separator.
+         */
+        SPECIAL
     }
 
     /**
@@ -63,7 +68,7 @@ public class INIWriter extends AbstractIO {
      */
     public final static class Builder extends AbstractIOBuilder<Builder> {
 
-        private StringQuoteMode stringQuoteMode = StringQuoteMode.AUTO;
+        private StringQuoteMode stringQuoteMode = StringQuoteMode.SPECIAL;
         
         private char quoteCharacter = '"';
         private boolean emptyValuesHaveSeparator = true;
@@ -181,37 +186,42 @@ public class INIWriter extends AbstractIO {
         }
     }
 
-    private String quote(String value) {
-    	return quote(quoteCharacter, stringQuoteMode, escapeMode, value);
-    }
-
-    public static String quote(char quoteCharacter, StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String value) {
+    public String quote(String value) {
         switch (stringQuoteMode) {
         case NEVER:
-            return escape(stringQuoteMode, escapeMode, value);
+            return escape(value);
         case ALWAYS:
             break;
-        case AUTO:
-            if (!needsQuote(value))
+        case SPECIAL:
+            if (!needsSpecialQuote(value))
                 return value;
+            break;
+        case AUTO:
+            if (!needsAutoQuote(value))
+                return value;
+            break;
         }
-        return quoteCharacter + escape(stringQuoteMode, escapeMode, value) + quoteCharacter;
+        return quoteCharacter + escape(value) + quoteCharacter;
     }
 
-    private String[] quote(String[] values) {
-    	return quote(quoteCharacter, stringQuoteMode, escapeMode, values);
-    }
-
-    public static String[] quote(char quoteCharacter, StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String[] values) {
+    public String[] quote(String[] values) {
     	var newVals = new String[values.length];
         for (int i = 0; i < values.length; i++) {
-            newVals[i] = quote(quoteCharacter, stringQuoteMode, escapeMode, values[i]);
+            newVals[i] = quote(values[i]);
         }
         return newVals;
     }
 
-    public static boolean needsQuote(String value) {
-        for (var c : new char[] { ' ', '\t', ';' }) {
+    private boolean needsAutoQuote(String value) {
+        for (var c : new char[] { ' ', '\t', commentCharacter, valueSeparator, multiValueSeparator, '\r', '\\', '\n', '\0', '\b' }) {
+            if (value.indexOf(c) != -1)
+                return true;
+        }
+        return false;
+    }
+    
+    private boolean needsSpecialQuote(String value) {
+        for (var c : new char[] { multiValueSeparator, '\t', valueSeparator, commentCharacter, '\r', '\\', '\n', '\0', '\b' }) {
             if (value.indexOf(c) != -1)
                 return true;
         }
@@ -220,10 +230,6 @@ public class INIWriter extends AbstractIO {
 
 
     private String escape(String value) {
-    	return escape(stringQuoteMode, escapeMode, value);
-    }
-
-    private static String escape(StringQuoteMode stringQuoteMode, EscapeMode escapeMode, String value) {
     	switch(escapeMode) {
     	case ALWAYS:
             value = value.replace("\\", "\\\\");
