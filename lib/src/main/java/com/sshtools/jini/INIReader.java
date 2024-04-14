@@ -98,7 +98,6 @@ public final class INIReader extends AbstractIO {
         /**
          * Multiple values are expressed as value keys repeating in the content.
          */
-    	@Deprecated
         REPEATED_KEY,
         /**
          * Multiple values are not allowed at all, a value will always be treated

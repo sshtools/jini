@@ -18,6 +18,7 @@ public class INIWriterTest {
                 "Key1 = Val4\n");
         
         var wrtr = new INIWriter.Builder().
+        		withMultiValueMode(MultiValueMode.REPEATED_KEY).
                 build();
         
         assertEquals(
