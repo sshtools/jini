@@ -17,11 +17,13 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Configurable whitespace usage.
  * Multiple modes for handling of duplicate properties and sections.
  * Multiple modes for handling of multi-value keys
+ * Multiple modes for handling of escape characters
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
  * Requires JDK 11 or above (JDK 17 for tests).
  * Optional [Preferences](#preferences-backing-store) implementation.
+ * String interpolation with configurable variable pattern. 
  
 ## WIP
 
@@ -179,6 +181,10 @@ Note that a `store` is scoped, and should be closed when finished with.
 
 
 ## Changes
+
+### 0.3.1
+
+ * Added string interpolation features.
 
 ### 0.3.0
 
