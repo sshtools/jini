@@ -92,11 +92,16 @@ public class INITest {
     }
 
     @Test
+    public void testCommaInValue() throws Exception {
+        assertEquals("Some,val", INI.fromString("Key1='Some,val'").get("Key1"));
+    }
+
+    @Test
     public void testDeleteKeys() throws Exception {
         var ini = INI.fromString(getBasicIni());
 
         assertTrue(ini.remove("Root 1"));
-        assertEquals(4, ini.values().size());
+        assertEquals(5, ini.values().size());
         assertFalse(ini.remove("Root 1"));
     }
 
@@ -487,12 +492,13 @@ public class INITest {
     }
 
     static void assertBasic(INI ini) {
-        assertEquals(5, ini.values().size());
+        assertEquals(6, ini.values().size());
         assertEquals("RootVal1", ini.get("Root 1"));
         assertEquals("RootVal2", ini.get("Root2"));
         assertEquals("Root Val 3", ini.get("Root 3"));
         assertEquals("Root Val 4", ini.get("Root 4"));
         assertEquals("Root Val 5", ini.get("Root 5"));
+        assertEquals("Root,Val,6", ini.get("Root 6"));
         assertEquals(3, ini.sections().size());
         assertTrue(ini.sections().containsKey("Section1"));
         assertTrue(ini.sections().containsKey("Section2"));
@@ -502,6 +508,7 @@ public class INITest {
         assertEquals("Value2", sec1.get("Key 2"));
         assertEquals("Value 3", sec1.get("Key 3"));
         assertEquals("Value 4", sec1.get("Key4"));
+        assertEquals("Value,5", sec1.get("Key5"));
         var sec2 = ini.section("Section2");
         assertEquals("Value1-2", sec2.get("Key1-2"));
         assertEquals("Value2-2", sec2.get("Key 2-2"));
@@ -558,6 +565,7 @@ public class INITest {
                "Root 3 = Root Val 3\n" +
                "Root 4 = 'Root Val 4'\n" +
                "Root 5 = \"Root Val 5\"\n" +
+               "Root 6 = 'Root,Val,6'\n" +
                "\n" +
                "; Another Comment\n" +
                "[Section1]\n" +
@@ -565,6 +573,7 @@ public class INITest {
                "Key 2 = Value2\n" +
                "Key 3 = 'Value 3'\n" +
                "Key4=\"Value 4\"\n" +
+               "Key5=\"Value,5\"\n" +
                "\n" +
                "; Yet Another Comment\n" +
                "[Section2]\n" +
@@ -594,9 +603,9 @@ public class INITest {
 	}
 
     static void assertBasicOrder(INI ini) {
-        assertEquals("Root 1,Root2,Root 3,Root 4,Root 5",
+        assertEquals("Root 1,Root2,Root 3,Root 4,Root 5,Root 6",
                 String.join(",", ini.values().keySet().toArray(new String[0])));
-        assertEquals("Key1,Key 2,Key 3,Key4",
+        assertEquals("Key1,Key 2,Key 3,Key4,Key5",
                 String.join(",", ini.section("Section1").values().keySet().toArray(new String[0])));
         assertEquals("Key1-2,Key 2-2,Key 3-2,Key4-2",
                 String.join(",", ini.section("Section2").values().keySet().toArray(new String[0])));

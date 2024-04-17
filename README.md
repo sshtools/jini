@@ -186,6 +186,7 @@ Note that a `store` is scoped, and should be closed when finished with.
 
  * Added string interpolation features.
  * Renamed some getters to shorten them, and also remove an ambiguity with `getAllOr()`.
+ * Separated values separator wasn't being ignored in quotes.
 
 ### 0.3.0
 

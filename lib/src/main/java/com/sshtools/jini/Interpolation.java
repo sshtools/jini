@@ -1,7 +1,7 @@
 package com.sshtools.jini;
 
 import java.text.MessageFormat;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
 public final class Interpolation {
@@ -9,7 +9,7 @@ public final class Interpolation {
 	public static final String DEFAULT_VARIABLE_PATTERN = "\\$\\{(.*?)\\}";
 
 	@FunctionalInterface
-	public interface Interpolator extends Function<String, String> {
+	public interface Interpolator extends BiFunction<Data, String, String> {
 		
 	}
 	
@@ -17,15 +17,15 @@ public final class Interpolation {
 	}
 
 	public static Interpolator throwException()  {
-		return (k) -> {
+		return (data, k) -> {
 			throw new IllegalArgumentException(MessageFormat.format("Unknown string variable ''{0}'''", k));
 		};
 	}
 	
 	public static Interpolator compound(Interpolator... sources)  {
-		return (k) -> {
+		return (data, k) -> {
 			for(var src : sources) {
-				var v = src.apply(k);
+				var v = src.apply(data, k);
 				if(v != null)
 					return v;
 			}
@@ -34,7 +34,7 @@ public final class Interpolation {
 	}
 	
 	public static Interpolator systemProperties()  {
-		return (k) -> {
+		return (data, k) -> {
 			if(k.startsWith("sys:")) {
 				return System.getProperty(k.substring(4));
 			}
@@ -44,7 +44,7 @@ public final class Interpolation {
 	}
 	
 	public static Interpolator environment()  {
-		return (k) -> {
+		return (data, k) -> {
 			if(k.startsWith("env:")) {
 				return System.getenv(k.substring(4));
 			}
@@ -53,21 +53,53 @@ public final class Interpolation {
 		};
 	}
 	
-	public static String str(String text, Interpolator source) {
-		return str(DEFAULT_VARIABLE_PATTERN, text, source);
+	public static Interpolator self()  {
+		return (data, k) -> {
+			if(k.startsWith("this:")) {
+				var kdata = data(k, data);
+				if(kdata != null)
+					return kdata.get(k.substring(5), key(k));
+			}
+			return null;
+		};
 	}
 	
-	public static String str(String pattern, String text, Interpolator source) {
-		return str(Pattern.compile(pattern), text, source);
+	public static Interpolator document()  {
+		return (data, k) -> {
+			if(k.startsWith("doc:")) {
+				var kdata = data(k, data.document());
+				if(kdata != null)
+					return kdata.get(k.substring(4), key(k));
+			}
+			return null;
+		};
 	}
 
-	public static String str(Pattern pattern, String text, Interpolator source) {
+	private static String key(String key) {
+		var idx = key.indexOf('.');
+		return idx == -1 ? key : key.substring(idx + 1);
+		
+	}
+	private static Data data(String key, Data parent) {
+		var idx = key.indexOf('.');
+		return idx == -1 ? parent : parent.section(key.substring(0, idx).split("\\."));
+	}
+	
+	public static String str(Data data, String text, Interpolator source) {
+		return str(data, DEFAULT_VARIABLE_PATTERN, text, source);
+	}
+	
+	public static String str(Data data, String pattern, String text, Interpolator source) {
+		return str(data, Pattern.compile(pattern), text, source);
+	}
+
+	public static String str(Data data, Pattern pattern, String text, Interpolator source) {
 		var matcher = pattern.matcher(text);
 		var builder = new StringBuilder();
 		int i = 0;
 		while (matcher.find()) {
 			var variable = matcher.group(1);
-			var replacement = source.apply(variable);
+			var replacement = source.apply(data, variable);
 			if(replacement == null) {
 				builder.append(text.substring(i, matcher.end()));
 			}
@@ -88,7 +120,9 @@ public final class Interpolation {
 		return compound(
 			systemProperties(),
 			environment(),
-			throwException()
+			throwException(),
+			self(),
+			document()
 		);
 	}
 }

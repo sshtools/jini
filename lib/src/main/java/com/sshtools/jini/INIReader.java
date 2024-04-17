@@ -512,7 +512,8 @@ public final class INIReader extends AbstractIO {
         var rootSections = createSectionMap(preserveOrder, caseSensitiveSections);
         var globalProperties = createPropertyMap(preserveOrder, caseSensitiveKeys);
         Section section = null;
-
+        var lineNo = 0;
+        var lastAppendedLine = -1;
         var ini = new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections, interpolator, variablePattern, missingVariableMode);
 
         while ((line = lineReader.readLine()) != null) {
@@ -548,233 +549,247 @@ public final class INIReader extends AbstractIO {
             var buf = new StringBuilder();
             String key = null;
             char quoted = '\0';
-            for (int i = 0; i < lineChars.length; i++) {
-                var ch = lineChars[i];
-                if (escape) {
-                    switch (ch) {
-                    case '\\':
-                    case '\'':
-                    case '"':
-                    case '#':
-                    case ':':
-                        buf.append(ch);
-                        break;
-                    case '0':
-                        buf.append((char) 0);
-                        break;
-                    case 'a':
-                        buf.append((char) 7);
-                        break;
-                    case 'b':
-                        buf.append((char) 8);
-                        break;
-                    case 't':
-                        buf.append((char) 11);
-                        break;
-                    case 'n':
-                        buf.append((char) 10);
-                        break;
-                    case 'r':
-                        buf.append((char) 13);
-                        break;
-                    // TODO unicode escape
-                    default:
-                        if ((comments && ch == commentCharacter) || ch == valueSeparator)
-                            buf.append(ch);
-                        else {
-                            buf.append('\\');
-                            buf.append(ch);
-                        }
-                        break;
-                    }
-                    escape = false;
-                } else {
-                    if (ch == '\\' && (escapeMode == EscapeMode.ALWAYS || (escapeMode == EscapeMode.QUOTED && quoted != '\0'))) {
-                        escape = true;
-                    } else {
-                        if (quoted != '\0') {
-                            if (quoted == ch) {
-                                quoted = '\0';
-                                continue;
-                            } else
-                                buf.append(ch);
-                        } else {
-                            if (isQuote(ch)) {
-                                quoted = ch;
-                            } else if (ch == commentCharacter && comments && inlineComments) {
-                                break;
-                            } else if (key == null) {
-                                if (ch == valueSeparator) {
-                                    key = unescapeJavaString(buf.toString());
-                                    buf.setLength(0);
-                                }
-//								else if(ch == ' ' || ch == '\t') {
-//									continue;
-//								}
-                                else
-                                    buf.append(ch);
-                            } else {
-                                buf.append(ch);
-                            }
-                        }
-                    }
-                }
+            var column = 0;            
+            while(column < lineChars.length) {
+	            for (; column < lineChars.length; column++) {
+	                var ch = lineChars[column];
+	                if (escape) {
+	                    switch (ch) {
+	                    case '\\':
+	                    case '\'':
+	                    case '"':
+	                    case '#':
+	                    case ':':
+	                        buf.append(ch);
+	                        break;
+	                    case '0':
+	                        buf.append((char) 0);
+	                        break;
+	                    case 'a':
+	                        buf.append((char) 7);
+	                        break;
+	                    case 'b':
+	                        buf.append((char) 8);
+	                        break;
+	                    case 't':
+	                        buf.append((char) 11);
+	                        break;
+	                    case 'n':
+	                        buf.append((char) 10);
+	                        break;
+	                    case 'r':
+	                        buf.append((char) 13);
+	                        break;
+	                    // TODO unicode escape
+	                    default:
+	                        if ((comments && ch == commentCharacter) || ch == valueSeparator)
+	                            buf.append(ch);
+	                        else {
+	                            buf.append('\\');
+	                            buf.append(ch);
+	                        }
+	                        break;
+	                    }
+	                    escape = false;
+	                } else {
+	                    if (ch == '\\' && (escapeMode == EscapeMode.ALWAYS || (escapeMode == EscapeMode.QUOTED && quoted != '\0'))) {
+	                        escape = true;
+	                    } else {
+	                        if (quoted != '\0') {
+	                            if (quoted == ch) {
+	                                quoted = '\0';
+	                                continue;
+	                            } else
+	                                buf.append(ch);
+	                        } else {
+	                            if (isQuote(ch)) {
+	                                quoted = ch;
+	                            } else if (ch == commentCharacter && comments && inlineComments) {
+                            		column = line.length();
+	                                break;
+	                            } else if (key == null) {
+	                                if (ch == valueSeparator) {
+	                                    key = unescapeJavaString(buf.toString());
+	                                    buf.setLength(0);
+	                                }
+	//								else if(ch == ' ' || ch == '\t') {
+	//									continue;
+	//								}
+	                                else
+	                                    buf.append(ch);
+	                            } else {
+	                            	if(ch == multiValueSeparator && multiValueMode == MultiValueMode.SEPARATED) {
+	                            		column++;
+	                            		break;
+	                            	}
+	                                buf.append(ch);
+	                            }
+	                        }
+	                    }
+	                }
+	            }
+	            if (key == null) {
+	                key = buf.toString();
+	                buf.setLength(0);
+	            }
+	
+	            if (valueSeparatorWhitespace)
+	                key = key.stripTrailing();
+	
+	            if (key.startsWith("[")) {
+	                var eidx = key.indexOf(']', 1);
+	                if (eidx == -1) {
+	                    if (parseExceptions) {
+	                        throw new ParseException("Incorrect syntax for section name, no closing ']'.", offset);
+	                    }
+	                } else {
+	                    if (eidx != key.length() - 1) {
+	                        if (parseExceptions) {
+	                            throw new ParseException(
+	                                    "Incorrect syntax for section name, trailing content after closing ']'.", offset);
+	                        } else
+	                            continue;
+	                    }
+	                    key = key.substring(1, eidx);
+	
+	                    String[] sectionPath;
+	                    if (nestedSections) {
+	                        sectionPath = tokenize(key, sectionPathSeparator);
+	                    } else {
+	                        sectionPath = new String[] { key };
+	                    }
+	
+	                    var parent = rootSections;
+	                    Section lastSection = null;
+	
+	                    for (int sectionIdx = 0; sectionIdx < sectionPath.length; sectionIdx++) {
+	                        var sectionKey = sectionPath[sectionIdx];
+	                        var last = sectionIdx == sectionPath.length - 1;
+	
+	                        var sectionsForKey = parent.get(sectionKey);
+	                        var parentSection = lastSection == null ? ini : lastSection;
+	
+	                        if (last) {
+								var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+	                                    parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
+	                            if (sectionsForKey == null) {
+	                                /* Doesn't exist, just add */
+	                                sectionsForKey = new Section[] { newSection };
+	                                parent.put(sectionKey, sectionsForKey);
+	                            } else {
+	                                switch (duplicateSectionAction) {
+	                                case ABORT:
+	                                    throw new ParseException(
+	                                            MessageFormat.format("Duplicate section key {0}.", sectionKey), offset);
+	                                case REPLACE:
+	                                    sectionsForKey = new Section[] { newSection };
+	                                    parent.put(sectionKey, sectionsForKey);
+	                                    break;
+	                                case IGNORE:
+	                                    continue;
+	                                case APPEND:
+	                                    var newSections = new Section[sectionsForKey.length + 1];
+	                                    System.arraycopy(sectionsForKey, 0, newSections, 0, sectionsForKey.length);
+	                                    newSections[sectionsForKey.length] = newSection;
+	                                    parent.put(sectionKey, newSections);
+	                                    sectionsForKey = newSections;
+	                                    break;
+	                                case MERGE:
+	                                    newSection.merge(sectionsForKey[0].values());
+	                                    parent.put(sectionKey, new Section[] { newSection });
+	                                    sectionsForKey = new Section[] { newSection };
+	                                    break;
+	                                }
+	                            }
+	                        } else {
+	                            if (sectionsForKey == null) {
+	                            	
+	                                /* Doesn't exist, just add */
+	                                sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
+	                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode) };
+	                                parent.put(sectionKey, sectionsForKey);
+	                            }
+	                        }
+	                        parent = sectionsForKey[0].sections;
+	                        section = sectionsForKey[0];
+	                    }
+	                }
+	            } else {
+	                var val = buf.toString();
+	                buf.setLength(0);
+	                if (val.isEmpty() && !emptyValues) {
+	                    if (parseExceptions)
+	                        throw new ParseException("Empty values are not allowed.", offset);
+	                } else {
+	                    if (trimmedValue) {
+	                        val = val.trim();
+	                    } else if (valueSeparatorWhitespace) {
+	                        val = val.stripLeading();
+	                    }
+	
+	                    Map<String, String[]> sectionProperties;
+	                    if (section == null) {
+	                        if (globalSection) {
+	                            sectionProperties = globalProperties;
+	                        } else {
+	                            if (parseExceptions)
+	                                throw new ParseException(
+	                                        "Global properties are not allowed, all properties must be in a [Section].",
+	                                        offset);
+	                            else
+	                                continue;
+	                        }
+	                    } else {
+	                        sectionProperties = section.values;
+	                    }
+	
+	                    var oldValues = sectionProperties.get(key);
+						if (oldValues != null 
+								&& multiValueMode == MultiValueMode.SEPARATED
+								&& duplicateKeysAction != DuplicateAction.ABORT
+								&& duplicateKeysAction != DuplicateAction.IGNORE
+                                && duplicateKeysAction != DuplicateAction.REPLACE) {
+                            appendValue(key, sectionProperties, val, oldValues);
+                            lastAppendedLine = lineNo;
+	                    }
+	                    else if (oldValues == null || 
+	                    		 multiValueMode == MultiValueMode.OFF || 
+	                    	   ( duplicateKeysAction == DuplicateAction.REPLACE && 
+                    	   				oldValues != null && 
+                    	   				lastAppendedLine != lineNo 
+	                    	   	) ) {
+	                        /* Doesn't exist, just add */
+	                        sectionProperties.put(key, new String[] { val });
+	                        lastAppendedLine = lineNo;
+	                    } else {
+	                        switch (duplicateKeysAction) {
+	                        case ABORT:
+	                            throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
+	                        case IGNORE:
+		                        lastAppendedLine = -1;
+	                            continue;
+	                        default:
+	                            appendValue(key, sectionProperties, val, oldValues);
+	                            lastAppendedLine = lineNo;
+	                            break;
+	                        }
+	                    }
+	                }
+	            }
             }
-            if (key == null) {
-                key = buf.toString();
-                buf.setLength(0);
-            }
 
-            if (valueSeparatorWhitespace)
-                key = key.stripTrailing();
-
-            if (key.startsWith("[")) {
-                var eidx = key.indexOf(']', 1);
-                if (eidx == -1) {
-                    if (parseExceptions) {
-                        throw new ParseException("Incorrect syntax for section name, no closing ']'.", offset);
-                    }
-                } else {
-                    if (eidx != key.length() - 1) {
-                        if (parseExceptions) {
-                            throw new ParseException(
-                                    "Incorrect syntax for section name, trailing content after closing ']'.", offset);
-                        } else
-                            continue;
-                    }
-                    key = key.substring(1, eidx);
-
-                    String[] sectionPath;
-                    if (nestedSections) {
-                        sectionPath = tokenize(key, sectionPathSeparator);
-                    } else {
-                        sectionPath = new String[] { key };
-                    }
-
-                    var parent = rootSections;
-                    Section lastSection = null;
-
-                    for (int i = 0; i < sectionPath.length; i++) {
-                        var sectionKey = sectionPath[i];
-                        var last = i == sectionPath.length - 1;
-
-                        var sectionsForKey = parent.get(sectionKey);
-                        var parentSection = lastSection == null ? ini : lastSection;
-
-                        if (last) {
-							var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
-                                    parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
-                            if (sectionsForKey == null) {
-                                /* Doesn't exist, just add */
-                                sectionsForKey = new Section[] { newSection };
-                                parent.put(sectionKey, sectionsForKey);
-                            } else {
-                                switch (duplicateSectionAction) {
-                                case ABORT:
-                                    throw new ParseException(
-                                            MessageFormat.format("Duplicate section key {0}.", sectionKey), offset);
-                                case REPLACE:
-                                    sectionsForKey = new Section[] { newSection };
-                                    parent.put(sectionKey, sectionsForKey);
-                                    break;
-                                case IGNORE:
-                                    continue;
-                                case APPEND:
-                                    var newSections = new Section[sectionsForKey.length + 1];
-                                    System.arraycopy(sectionsForKey, 0, newSections, 0, sectionsForKey.length);
-                                    newSections[sectionsForKey.length] = newSection;
-                                    parent.put(sectionKey, newSections);
-                                    sectionsForKey = newSections;
-                                    break;
-                                case MERGE:
-                                    newSection.merge(sectionsForKey[0].values());
-                                    parent.put(sectionKey, new Section[] { newSection });
-                                    sectionsForKey = new Section[] { newSection };
-                                    break;
-                                }
-                            }
-                        } else {
-                            if (sectionsForKey == null) {
-                            	
-                                /* Doesn't exist, just add */
-                                sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
-                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode) };
-                                parent.put(sectionKey, sectionsForKey);
-                            }
-                        }
-                        parent = sectionsForKey[0].sections;
-                        section = sectionsForKey[0];
-                    }
-                }
-            } else {
-                var val = buf.toString();
-                if (val.isEmpty() && !emptyValues) {
-                    if (parseExceptions)
-                        throw new ParseException("Empty values are not allowed.", offset);
-                } else {
-                    if (trimmedValue) {
-                        val = val.trim();
-                    } else if (valueSeparatorWhitespace) {
-                        val = val.stripLeading();
-                    }
-
-                    Map<String, String[]> sectionProperties;
-                    if (section == null) {
-                        if (globalSection) {
-                            sectionProperties = globalProperties;
-                        } else {
-                            if (parseExceptions)
-                                throw new ParseException(
-                                        "Global properties are not allowed, all properties must be in a [Section].",
-                                        offset);
-                            else
-                                continue;
-                        }
-                    } else {
-                        sectionProperties = section.values;
-                    }
-
-                    String[] values;
-                    var dupAction = duplicateKeysAction;
-                    if (multiValueMode == MultiValueMode.REPEATED_KEY) {
-                        values = new String[] { val };
-                        dupAction = DuplicateAction.APPEND;
-                    } else if(multiValueMode == MultiValueMode.SEPARATED) {
-                        values = tokenize(val, multiValueSeparator);
-                        if (trimmedValue)
-                            values = trim(values);
-                    } else {
-                        values = new String[] { val };
-                    }
-
-                    var valuesForKey = sectionProperties.get(key);
-                    if (valuesForKey == null) {
-                        /* Doesn't exist, just add */
-                        sectionProperties.put(key, values);
-                    } else {
-                        switch (dupAction) {
-                        case ABORT:
-                            throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
-                        case REPLACE:
-                            sectionProperties.put(key, values);
-                            break;
-                        case IGNORE:
-                            continue;
-                        case MERGE:
-                        case APPEND:
-                            var newValues = new String[valuesForKey.length + values.length];
-                            System.arraycopy(valuesForKey, 0, newValues, 0, valuesForKey.length);
-                            System.arraycopy(values, 0, newValues, valuesForKey.length, values.length);
-                            sectionProperties.put(key, newValues);
-                            break;
-                        }
-                    }
-                }
-            }
-
+            lineNo++;
         }
         return ini;
     }
+
+	protected void appendValue(String key, Map<String, String[]> sectionProperties, String value,
+			String[] valuesForKey) {
+		var newValues = new String[valuesForKey.length + 1];
+		System.arraycopy(valuesForKey, 0, newValues, 0, valuesForKey.length);
+		newValues[valuesForKey.length] = value;
+		sectionProperties.put(key, newValues);
+	}
 
     private boolean isQuote(char ch) {
         for (var c : quoteCharacters)

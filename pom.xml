@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>jini</artifactId>
-    <version>0.3.1-SNAPSHOT</version>
+    <version>0.3.1</version>
     <name>Java INI file reader and writer</name>
     <packaging>pom</packaging>
     <properties>
@@ -107,7 +107,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<release>11</release>
-					<testRelease>17</testRelease>
+					<testRelease>11</testRelease>
 				</configuration>
 			</plugin>
 			
@@ -199,7 +199,7 @@
        					<javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
                         <encoding>UTF-8</encoding>
                         <detectJavaApiLink>false</detectJavaApiLink>
-                        <source>17</source>
+                        <source>11</source>
                         <doclint>none</doclint>
                         <sourcepath>src/main/java</sourcepath>
                         <includeDependencySources>false</includeDependencySources>

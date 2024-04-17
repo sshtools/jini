@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.sshtools.jini.Data.AbstractData;
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
 import com.sshtools.jini.INI.Section;
@@ -259,7 +260,7 @@ public class INIWriter extends AbstractIO {
                     pw.println();
                 pw.format("[%s]%n", escape(key));
                 if (sections.length == 1) {
-                    sections[0].values().forEach((k, v) -> writeProperty(pw, k, v));
+                    ((AbstractData)sections[0]).values.forEach((k, v) -> writeProperty(pw, k, v));
                     newline.set(true);
                     writeSections(pw, newline, sections[0].sections(), path);
                 }

@@ -297,7 +297,12 @@ public class INI extends AbstractData {
         }
     }
 
-    /**
+    @Override
+	public INI document() {
+		return this;
+	}
+
+	/**
      * Parse a file that contains a document in INI format if it exists. If the
      * file does not exists, a new writable document will be returned. If it does exist,
      * it will have case insensitive keys for values and sections, and insertion order will be
@@ -699,7 +704,7 @@ public class INI extends AbstractData {
             Collections.reverse(l);
             return l.toArray(new String[0]);
         }
-
+        
         /**
          * Return all parent paths up to but excluding the root document.
          * 
@@ -785,6 +790,11 @@ public class INI extends AbstractData {
 
     public enum MergeMode {
     	FLATTEN_SECTIONS
+    }
+
+    @Override
+    public Optional<Section> parentOr() {
+    	return Optional.empty();
     }
 
     /**

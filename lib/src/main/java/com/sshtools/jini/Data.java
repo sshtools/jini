@@ -315,7 +315,7 @@ public interface Data {
 
         @Override
         public Map<String, Section[]> sections() {
-            return Collections.unmodifiableMap(sections);
+            return sections;
         }
 
         @Override
@@ -396,12 +396,12 @@ public interface Data {
         
         private String[] interpolate(String[] vals) {
         	for(int i = 0 ; i < vals.length; i++) {
-        		vals[i] = Interpolation.str(
+        		vals[i] = Interpolation.str(this, 
         				variablePattern.orElse(Interpolation.DEFAULT_VARIABLE_PATTERN), 
         				vals[i],
         				Interpolation.compound(
         					interpolator.get(),
-        					var -> {
+        					(data, var) -> {
         						switch(missingVariableMode) {
         						case BLANK:
         							return "";
@@ -441,13 +441,17 @@ public interface Data {
     }
 
     /**
-     * Get an unmodifiable set of the underlying keys.
+     * Get a  set of the underlying keys.
      * 
-     * @return map of keys in this section or document
+     * @return set of keys in this section or document
      */
     Set<String> keys();
 
-    int size();
+    Optional<Section> parentOr();
+    
+    INI document();
+
+	int size();
 
 	void clear();
 
@@ -460,7 +464,7 @@ public interface Data {
     Map<String, String[]> values();
 
     /**
-     * Get an unmodifiable map of the underlying sections. The returned array of values
+     * Get a map of the underlying sections. The returned array of values
      * will never be <code>null</code>, and will never be an empty array.
      * 
      * @return map of sections in this section or document
