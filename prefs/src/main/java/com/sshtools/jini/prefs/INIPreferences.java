@@ -9,7 +9,7 @@ import java.util.prefs.AbstractPreferences;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
-import com.sshtools.jini.Data.AbstractData;
+import com.sshtools.jini.Data;
 
 public class INIPreferences {
 
@@ -23,10 +23,10 @@ public class INIPreferences {
 
 	abstract static class AbstractINIPreferences extends AbstractPreferences {
 
-		protected AbstractData ini;
+		protected Data ini;
 		protected final INIStore store;
 
-		protected AbstractINIPreferences(AbstractData ini, String name, INIStore store, AbstractPreferences parent) {
+		protected AbstractINIPreferences(Data ini, String name, INIStore store, AbstractPreferences parent) {
 			super(parent, name);
 			this.store = store;
 			this.ini = ini;

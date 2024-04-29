@@ -43,7 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.sshtools.jini.Data.AbstractData;
 import com.sshtools.jini.INIReader.MultiValueMode;
 import com.sshtools.jini.Interpolation.Interpolator;
 
@@ -64,7 +63,7 @@ import com.sshtools.jini.Interpolation.Interpolator;
  * {@link INIReader} created by an {@link INIReader.Builder}.
  * 
  */
-public class INI extends AbstractData {
+public interface INI extends Data {
 	
 	/**
 	 * Missing variable mode 
@@ -113,7 +112,7 @@ public class INI extends AbstractData {
 	/**
 	 * Helper for lazy initialisation of an empty read onlyt document.
 	 */
-	private final static class EmptyContainer {
+	final static class EmptyContainer {
 		private final static INI empty = INI.create().readOnly();
 	}
 	
@@ -121,7 +120,7 @@ public class INI extends AbstractData {
 	 * Empty, read-only document
 	 */
 	
-	public final static INI empty() {
+	static INI empty() {
 		return EmptyContainer.empty;
 	}
     
@@ -268,7 +267,7 @@ public class INI extends AbstractData {
          * @return document
          */
         public INI build() {
-            return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, interpolator, variablePattern, missingVariableMode);
+            return new DefaultINI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, interpolator, variablePattern, missingVariableMode);
         }
     }
 
@@ -296,11 +295,81 @@ public class INI extends AbstractData {
             throw new UncheckedIOException(ioe);
         }
     }
+    
+    public final static class DefaultINI extends AbstractData implements INI {
 
-    @Override
-	public INI document() {
-		return this;
-	}
+
+    	DefaultINI(boolean emptyValues, boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
+                Map<String, String[]> values, Map<String, Section[]> sections, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+            super(emptyValues, preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
+        }
+
+    	DefaultINI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections, Optional<Interpolator> interpolator,
+                Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
+            super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
+        }
+
+        /**
+         * Create a read only facade to an existing docuiment.
+         * 
+         * @param document document
+         * @return read only document
+         */
+        @Override
+        public INI readOnly() {
+    		var s = new HashMap<String, Section[]>();
+    		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
+    				.collect(Collectors.toList()).toArray(new Section[0])));
+    		return new DefaultINI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+    				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), interpolator, variablePattern, missingVariableMode);
+    	}
+
+        @Override
+        public Optional<Section> parentOr() {
+        	return Optional.empty();
+        }
+        
+        @Override
+    	public INI document() {
+    		return this;
+    	}	
+
+        /**
+         * Merge one or more documents to make a new document that contains all the
+         * sections and keys of both. 
+         * 
+         * @param document document
+         * @return read only document
+         */
+        @Override
+        public INI merge(MergeMode mergeMode, INI... others) {
+        	var newDoc = INI.create();
+        	for(var other : others) {
+        		merge(mergeMode, newDoc, other);
+        	}
+        	return newDoc;
+        }
+
+    	protected void merge(MergeMode mergeMode, AbstractData newDoc, AbstractData other) {
+    		newDoc.values.putAll(other.values);
+    		for(var sec : other.sections.entrySet()) {
+    			switch(mergeMode) {
+    			case FLATTEN_SECTIONS:
+    				
+    				break;
+    			default:
+    				throw new UnsupportedOperationException();
+    			}
+//    			if(newDoc.sections.containsKey(sec.getKey())) {
+//    				merge(newDoc.sections.get(sec.getKey()), sec.getValue());
+//    			}
+//    			else {
+//    				
+//    			}
+    		}
+    	}
+    }
 
 	/**
      * Parse a file that contains a document in INI format if it exists. If the
@@ -607,12 +676,51 @@ public class INI extends AbstractData {
      * section is used instead with each element separated by some character
      * (<code>.</code> by default), for example <code>[Level1.Level2.Level3]</code>.
      */
-    public final static class Section extends AbstractData {
+    public interface Section extends Data {
+
+		/**
+		 * Remove this section from it's parent section or document.
+		 */
+		void remove();
+
+		/**
+		 * Get the key used for this section.
+		 * 
+		 * @return key
+		 */
+		String key();
+
+		/**
+		 * Return all parent paths up to but excluding the root document.
+		 * 
+		 * @return parents
+		 */
+		Section[] parents();
+
+		/**
+		 * Return this sections path, with each element in the array being an element of
+		 * the path starting from the root document.
+		 * 
+		 * @return path
+		 */
+		String[] path();
+
+		/**
+		 * Get the parent {@link Section} or thrown an {@link IllegalArgumentException}
+		 * if this section is in the root document.
+		 * 
+		 * @return parent
+		 */
+		Section parent();
+    	
+    }
+    
+    final static class SectionImpl extends AbstractData implements Section {
         private final String key;
         private final Optional<Data> parent;
         private final INI ini;
 
-        Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys,
+        SectionImpl(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys,
 				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key, Optional<Interpolator> interpolator,
                 Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
 			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
@@ -625,12 +733,12 @@ public class INI extends AbstractData {
                     ini = (INI) p;
                     break;
                 } else
-                    p = ((Section) p).parent.get();
+                    p = ((Section) p).parent();
             }
             this.ini = ini;
 		}
 
-		Section(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
+        SectionImpl(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections,
                 Data parent, String key, Optional<Interpolator> interpolator,
                 Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
             super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
@@ -643,7 +751,7 @@ public class INI extends AbstractData {
                     ini = (INI) p;
                     break;
                 } else
-                    p = ((Section) p).parent.get();
+                    p = ((SectionImpl) p).parent.get();
             }
             this.ini = ini;
         }
@@ -656,7 +764,7 @@ public class INI extends AbstractData {
     		var s = new HashMap<String, Section[]>();
     		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
     				.collect(Collectors.toList()).toArray(new Section[0])));
-        	return new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, 
+        	return new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, 
         			Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), parent.get(), key, interpolator,
         			variablePattern, missingVariableMode);
         }
@@ -664,6 +772,7 @@ public class INI extends AbstractData {
         /**
          * Remove this section from it's parent section or document.
          */
+		@Override
         public void remove() {
             ((AbstractData) parent.get()).remove(this);
         }
@@ -673,6 +782,7 @@ public class INI extends AbstractData {
          * 
          * @return document
          */
+		@Override
         public INI document() {
             return ini;
         }
@@ -683,6 +793,7 @@ public class INI extends AbstractData {
          * 
          * @return parent
          */
+		@Override
         public Section parent() {
             return parentOr().orElseThrow(() -> new IllegalStateException("Has no parent."));
         }
@@ -693,13 +804,18 @@ public class INI extends AbstractData {
          * 
          * @return path
          */
+		@Override
         public String[] path() {
 
-            var s = this;
+            Section s = this;
             var l = new ArrayList<>(Arrays.asList(key()));
             while (s.parentOr().isPresent()) {
-                s = s.parent();
-                l.add(s.key());
+            	if(s.parentOr().get() instanceof Section) {
+                    s = s.parentOr().get();
+                    l.add(s.key());
+            	}
+            	else
+            		break;
             }
             Collections.reverse(l);
             return l.toArray(new String[0]);
@@ -710,12 +826,17 @@ public class INI extends AbstractData {
          * 
          * @return parents
          */
+		@Override
         public Section[] parents() {
-            var s = this;
+			Section s = this;
             var l = new ArrayList<Section>();
             while (s.parentOr().isPresent()) {
-                s = s.parent();
-                l.add(s);
+            	if(s.parentOr().get() instanceof Section) {
+                    s = s.parentOr().get();
+                    l.add(s);
+            	}
+            	else
+            		break;
             }
             return l.toArray(new Section[0]);
         }
@@ -726,6 +847,7 @@ public class INI extends AbstractData {
          * 
          * @return optional parent
          */
+		@Override
         public Optional<Section> parentOr() {
             return parent.get() instanceof Section ? parent.map(d -> (Section) d) : Optional.empty();
         }
@@ -735,6 +857,7 @@ public class INI extends AbstractData {
          * 
          * @return key
          */
+		@Override
         public String key() {
             return key;
         }
@@ -762,80 +885,14 @@ public class INI extends AbstractData {
 
     }
 
-    INI(boolean emptyValues, boolean preserveOrder, boolean caseInsensitiveKeys, boolean caseInsensitiveSections,
-            Map<String, String[]> values, Map<String, Section[]> sections, Optional<Interpolator> interpolator,
-            Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
-        super(emptyValues, preserveOrder, caseInsensitiveKeys, caseInsensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
-    }
-
-    INI(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSenstiveSections, Optional<Interpolator> interpolator,
-            Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
-        super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
-    }
-
-    /**
-     * Create a read only facade to an existing docuiment.
-     * 
-     * @param document document
-     * @return read only document
-     */
-    @Override
-    public INI readOnly() {
-		var s = new HashMap<String, Section[]>();
-		sections.forEach((k, v) -> s.put(k, Arrays.asList(v).stream().map(vv -> vv.readOnly())
-				.collect(Collectors.toList()).toArray(new Section[0])));
-		return new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
-				Collections.unmodifiableMap(values), Collections.unmodifiableMap(s), interpolator, variablePattern, missingVariableMode);
-	}
-
     public enum MergeMode {
     	FLATTEN_SECTIONS
     }
 
-    @Override
-    public Optional<Section> parentOr() {
-    	return Optional.empty();
-    }
-
-    /**
-     * Merge one or more documents to make a new document that contains all the
-     * sections and keys of both. 
-     * 
-     * @param document document
-     * @return read only document
-     */
-    public INI merge(MergeMode mergeMode, INI... others) {
-    	var newDoc = create();
-    	for(var other : others) {
-    		merge(mergeMode, newDoc, other);
-    	}
-    	return newDoc;
-    }
-
-	protected void merge(MergeMode mergeMode, AbstractData newDoc, AbstractData other) {
-		newDoc.values.putAll(other.values);
-		for(var sec : other.sections.entrySet()) {
-			switch(mergeMode) {
-			case FLATTEN_SECTIONS:
-				
-				break;
-			default:
-				throw new UnsupportedOperationException();
-			}
-//			if(newDoc.sections.containsKey(sec.getKey())) {
-//				merge(newDoc.sections.get(sec.getKey()), sec.getValue());
-//			}
-//			else {
-//				
-//			}
-		}
-	}
+    INI merge(MergeMode mergeMode, INI... others);
     
-
     @Override
-    public String toString() {
-        return new INIWriter.Builder().build().write(this);
-    }
+    INI readOnly();
 
     /*
      * Copyright 2002-2021 the original author or authors.

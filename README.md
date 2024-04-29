@@ -182,6 +182,10 @@ Note that a `store` is scoped, and should be closed when finished with.
 
 ## Changes
 
+### 0.3.2
+
+ * More work on `INISchema`, can now wrap an `INI` to provide a proxied instance that guarantees correctness.
+
 ### 0.3.1
 
  * Added string interpolation features.

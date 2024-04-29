@@ -15,10 +15,10 @@ import java.util.prefs.AbstractPreferences;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
+import com.sshtools.jini.Data;
 import com.sshtools.jini.INI;
-import com.sshtools.jini.INIWriter;
-import com.sshtools.jini.Data.AbstractData;
 import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIWriter;
 import com.sshtools.jini.prefs.INIPreferences.AbstractINIPreferences;
 import com.sshtools.jini.prefs.INIPreferences.Mode;
 import com.sshtools.jini.prefs.INIPreferences.Scope;
@@ -317,7 +317,7 @@ public final class INIStoreBuilder {
 
 		final Path file;
 
-		SingleFileINIPreferences(AbstractData data, Path file, String name, INIStore store,
+		SingleFileINIPreferences(Data data, Path file, String name, INIStore store,
 				AbstractPreferences parent) {
 			super(data, name, store, parent);
 			this.file = file;

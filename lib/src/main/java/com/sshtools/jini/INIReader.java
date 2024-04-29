@@ -35,9 +35,11 @@ import java.util.TreeMap;
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
 import com.sshtools.jini.INI.EscapeMode;
+import com.sshtools.jini.INI.DefaultINI;
 import com.sshtools.jini.INI.LinkedCaseInsensitiveMap;
 import com.sshtools.jini.INI.MissingVariableMode;
 import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INI.SectionImpl;
 import com.sshtools.jini.Interpolation.Interpolator;
 
 /**
@@ -511,10 +513,10 @@ public final class INIReader extends AbstractIO {
         var offset = 0;
         var rootSections = createSectionMap(preserveOrder, caseSensitiveSections);
         var globalProperties = createPropertyMap(preserveOrder, caseSensitiveKeys);
-        Section section = null;
+        SectionImpl section = null;
         var lineNo = 0;
         var lastAppendedLine = -1;
-        var ini = new INI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections, interpolator, variablePattern, missingVariableMode);
+        var ini = new DefaultINI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections, interpolator, variablePattern, missingVariableMode);
 
         while ((line = lineReader.readLine()) != null) {
             offset += line.length();
@@ -670,7 +672,7 @@ public final class INIReader extends AbstractIO {
 	                        var parentSection = lastSection == null ? ini : lastSection;
 	
 	                        if (last) {
-								var newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
+								var newSection = new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
 	                                    parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
 	                            if (sectionsForKey == null) {
 	                                /* Doesn't exist, just add */
@@ -705,13 +707,13 @@ public final class INIReader extends AbstractIO {
 	                            if (sectionsForKey == null) {
 	                            	
 	                                /* Doesn't exist, just add */
-	                                sectionsForKey = new Section[] { new Section(emptyValues, preserveOrder, caseSensitiveKeys,
+	                                sectionsForKey = new Section[] { new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys,
 	                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode) };
 	                                parent.put(sectionKey, sectionsForKey);
 	                            }
 	                        }
-	                        parent = sectionsForKey[0].sections;
-	                        section = sectionsForKey[0];
+	                        parent = sectionsForKey[0].sections();
+	                        section = (SectionImpl)sectionsForKey[0];
 	                    }
 	                }
 	            } else {

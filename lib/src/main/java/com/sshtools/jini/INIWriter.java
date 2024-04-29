@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.sshtools.jini.Data.AbstractData;
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
 import com.sshtools.jini.INI.Section;
@@ -73,6 +72,33 @@ public class INIWriter extends AbstractIO {
         
         private char quoteCharacter = '"';
         private boolean emptyValuesHaveSeparator = true;
+        private int indent = 2;
+        private char indentCharacter = ' ';
+        
+        /**
+         * Which character to use for indenting. Only tab ('\t') and space (' ') is allowed.
+         * 
+         * @param identCharacter character 
+         * @return this for chaining
+         */
+        public Builder withIndentCharacter(char indentCharacter) {
+        	if(indentCharacter != ' ' && indentCharacter != '\t') {
+        		throw new IllegalArgumentException();
+        	}
+            this.indentCharacter = indentCharacter;
+            return this;
+        }
+        
+        /** 
+         * How many indent characters to use.
+         * 
+         * @param indent indent 
+         * @return this for chaining
+         */
+        public Builder withIndent(int indent) {
+            this.indent = indent;
+            return this;
+        }
 
         /**
          * When {@link #withEmptyValues(boolean)} is true (the default), this configures whether
@@ -125,64 +151,74 @@ public class INIWriter extends AbstractIO {
     private final StringQuoteMode stringQuoteMode;
     private final char quoteCharacter;
     private final boolean emptyValuesHaveSeparator;
+    private final String indent;
 
     INIWriter(Builder builder) {
         super(builder);
         this.stringQuoteMode = builder.stringQuoteMode;
         this.quoteCharacter = builder.quoteCharacter;
         this.emptyValuesHaveSeparator = builder.emptyValuesHaveSeparator;
+        
+        var indnt = new StringBuilder();
+        for(int i = 0 ; i < builder.indent; i++) 
+        	indnt.append(builder.indentCharacter);
+        
+        indent = indnt.toString();
     }
 
     /**
-     * Write the {@link INI} document as a string.
+     * Write the {@link Data} as a string. This can either be any {@link Data}, including
+     * the entire {@link INI} document, or a {@link Section}.
      * 
      * @param document document
      * @return string  content
      * @throws IOException
      */
-    public String write(INI document) {
+    public String write(Data document) {
         var w = new StringWriter();
         write(document, w);
         return w.toString();
     }
 
     /**
-     * Write the {@link INI} document to a file.
+     * Write the {@link Data} to a file. This can either be any {@link Data}, including
+     * the entire {@link INI} document, or a {@link Section}.
      * 
      * @param document document
      * @param file file
      * @throws IOException on error
      */
-    public void write(INI document, Path file) throws IOException {
+    public void write(Data document, Path file) throws IOException {
         try(var out = Files.newBufferedWriter(file)) {
             write(document, out);
         }
     }
 
     /**
-     * Write the {@link INI} document as a stream.
+     * Write the {@link Data} as a stream. This can either be any {@link Data}, including
+     * the entire {@link INI} document, or a {@link Section}.
      * 
      * @param document document
      * @param writer writer
      * @throws IOException on error
      */
-    public void write(INI document, Writer writer) {
+    public void write(Data document, Writer writer) {
         var pw = new PrintWriter(writer);
         var values = document.values();
         var sections = document.sections();
         var path = new Stack<String>();
 
-        values.forEach((k, v) -> writeProperty(pw, k, v));
+        values.forEach((k, v) -> writeProperty(0, pw, k, v));
 
-        writeSections(pw, new AtomicBoolean(values.size() > 0), sections, path);
+        writeSections(0, pw, new AtomicBoolean(values.size() > 0), sections, path);
 
         pw.flush();
     }
 
-    private void writeSections(PrintWriter pw, AtomicBoolean lf, Map<String, Section[]> sections, Stack<String> path) {
+    private void writeSections(int depth, PrintWriter pw, AtomicBoolean lf, Map<String, Section[]> sections, Stack<String> path) {
         if (sections.size() > 0) {
             for(var section : sections.entrySet()) {
-                writeSection(pw, path, section.getKey(), lf, section.getValue());
+                writeSection(depth, pw, path, section.getKey(), lf, section.getValue());
             }
         }
     }
@@ -252,21 +288,21 @@ public class INIWriter extends AbstractIO {
     	}
     }
 
-    private void writeSection(PrintWriter pw, Stack<String> path, String key, AtomicBoolean newline, Section... sections) {
+    private void writeSection(int depth, PrintWriter pw, Stack<String> path, String key, AtomicBoolean newline, Section... sections) {
         path.push(key);
         try {
             if (sections.length < 2) {
                 if(newline.get())
                     pw.println();
-                pw.format("[%s]%n", escape(key));
+                pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path)));
                 if (sections.length == 1) {
-                    ((AbstractData)sections[0]).values.forEach((k, v) -> writeProperty(pw, k, v));
+                    sections[0].rawValues().forEach((k, v) -> writeProperty(depth + 1, pw, k, v));
                     newline.set(true);
-                    writeSections(pw, newline, sections[0].sections(), path);
+                    writeSections(depth + 1, pw, newline, sections[0].sections(), path);
                 }
             } else {
                 for (var v : sections) {
-                    writeSection(pw, path, key, newline, v);
+                    writeSection(depth + 1, pw, path, key, newline, v);
                 }
             }
         } finally {
@@ -274,10 +310,10 @@ public class INIWriter extends AbstractIO {
         }
     }
 
-    private void writeProperty(PrintWriter pw, String key, String... values) {
+    private void writeProperty(int depth, PrintWriter pw, String key, String... values) {
         if (values.length == 0) {
             if(emptyValues) {
-                pw.print(escape(key));
+                pw.format("%s%s", indent(depth), escape(key));
                 if(emptyValuesHaveSeparator) {
                     if(valueSeparatorWhitespace) {
                         pw.println(" = ");
@@ -291,25 +327,32 @@ public class INIWriter extends AbstractIO {
                 }
             }
         } else if (values.length == 1) {
-            writeOneProperty(pw, key, quote(values[0]));
+            writeOneProperty(depth, pw, key, quote(values[0]));
         } else {
             if (multiValueMode == MultiValueMode.REPEATED_KEY) {
                 for (var v : values)
-                    writeProperty(pw, key, v);
+                    writeProperty(depth, pw, key, v);
             } else {
                 if (trimmedValue)
-                    writeOneProperty(pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(values)));
+                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(values)));
                 else
-                    writeOneProperty(pw, key, String.join(String.valueOf(multiValueSeparator), quote(values)));
+                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator), quote(values)));
             }
         }
     }
+    
+    private String indent(int depth) {
+    	var b = new StringBuilder();
+    	for(int i = 0 ; i< depth; i++)
+    		b.append(indent);
+    	return b.toString();
+    }
 
-    private void writeOneProperty(PrintWriter pw, String key, String value) {
+    private void writeOneProperty(int depth, PrintWriter pw, String key, String value) {
         if (valueSeparatorWhitespace)
-            pw.println(String.format("%s %s %s", escape(key), Character.valueOf(valueSeparator), value));
+            pw.println(String.format("%s%s %s %s", indent(depth), escape(key), Character.valueOf(valueSeparator), value));
         else
-            pw.println(String.format("%s%s%s", escape(key), Character.valueOf(valueSeparator), value));
+            pw.println(String.format("%s%s%s%s", indent(depth), escape(key), Character.valueOf(valueSeparator), value));
     }
 
 }

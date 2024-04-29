@@ -33,6 +33,7 @@ import java.util.stream.LongStream;
 
 import com.sshtools.jini.INI.MissingVariableMode;
 import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INI.SectionImpl;
 import com.sshtools.jini.Interpolation.Interpolator;
 
 /**
@@ -227,10 +228,10 @@ public interface Data {
         	else if(key.length == 1)
         		return sections.containsKey(key[0]);
         	else {
-        		var section = this;
+        		Data section = this;
         		for(var k : key) {
-        			if(section.sections.containsKey(k)) {
-        				section = section.sections.get(k)[0];
+        			if(section.sections().containsKey(k)) {
+        				section = section.sections().get(k)[0];
         			}
         			else {
         				return false; 
@@ -300,17 +301,32 @@ public interface Data {
 			fireUpdated(this, key, was, sval);
         }
 
-        @Override
-        public Map<String, String[]> values() {
+        @SuppressWarnings("unchecked")
+		@Override
+		public <E extends Enum<E>> void putAllEnum(String key, E... values) {
+        	 var sval = nullCheck(Arrays.asList(values).stream().map(i -> {
+                 return i.toString();
+             }).toArray((s) -> new String[s]));
+ 			var was = this.values.put(key, sval);
+ 			fireUpdated(this, key, was, sval);
+		}
+
+		@Override
+        public final Map<String, String[]> values() {
         	if(interpolator.isPresent()) {
         		var m = new HashMap<String, String[]>();
-        		for(var en : values.entrySet()) {
+        		for(var en : rawValues().entrySet()) {
         			m.put(en.getKey(), interpolate(en.getValue()));
         		}
         		return Collections.unmodifiableMap(m);
         	}
         	else
-        		return Collections.unmodifiableMap(values);
+        		return rawValues();
+        }
+
+		@Override
+        public Map<String, String[]> rawValues() {
+       		return values;
         }
 
         @Override
@@ -350,15 +366,15 @@ public interface Data {
             for (int i = 0; i < path.length; i++) {
                 var last = i == path.length - 1;
                 var name = path[i];
-                var existing = parent == null ? sections.get(name) : parent.sections.get(name);
+                var existing = parent == null ? sections.get(name) : parent.sections().get(name);
                 if (existing == null) {
-                    newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
+                    newSection = new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                             parent == null ? this : parent, name, interpolator, variablePattern, missingVariableMode);
-                    (parent == null ? sections : parent.sections).put(name, new Section[] { newSection });
+                    (parent == null ? sections : parent.sections()).put(name, new Section[] { newSection });
 					fireSectionUpdate(this, newSection, UpdateType.ADD);
                 } else {
                     if (last) {
-                        newSection = new Section(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
+                        newSection = new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveKeys,
                                 parent == null ? this : parent, name, interpolator, variablePattern, missingVariableMode);
                         var newSections = new Section[existing.length + 1];
                         System.arraycopy(existing, 0, newSections, 0, existing.length);
@@ -373,6 +389,11 @@ public interface Data {
             if (newSection == null)
                 throw new IllegalArgumentException("No section path");
             return newSection;
+        }
+
+        @Override
+        public String toString() {
+            return new INIWriter.Builder().build().write(this);
         }
 
 		protected void fireSectionUpdate(AbstractData parent, Section newSection, UpdateType type) {
@@ -449,6 +470,10 @@ public interface Data {
 
     Optional<Section> parentOr();
     
+    default String[] path() {
+    	return new String[0];
+    }
+    
     INI document();
 
 	int size();
@@ -456,12 +481,22 @@ public interface Data {
 	void clear();
 
 	/**
-     * Get an unmodifiable map of the underlying values. The returned array of values
-     * will never be <code>null</code>, but may potentially be an empty array.
+     * Get the map of the underlying values. The returned array of values
+     * will never be <code>null</code>, but may potentially be an empty array. If string interpolation
+     * is enabled, values will be processed. For unprocessed values, see {@link #rawValues()}. 
      * 
      * @return map of values in this section or document
      */
     Map<String, String[]> values();
+    
+    /**
+     * Get the map of the underlying values. The returned array of values
+     * will never be <code>null</code>, but may potentially be an empty array. The values returned will
+     * be unprocessed, i.e. if string interpolation is enabled, no strings will be replaced.
+     * 
+     * @return map of values in this section or document
+     */
+    Map<String, String[]> rawValues();
 
     /**
      * Get a map of the underlying sections. The returned array of values
@@ -607,6 +642,32 @@ public interface Data {
     default void put(String key, boolean value) {
         putAll(key, value);
     }
+
+    /**
+     * Put a boolean value into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * 
+     * @param key key to store value under
+     * @param value value to store
+     */
+    default <E extends Enum<E>> void putEnum(String key, E value) {
+        put(key, value.name());
+    }
+
+    /**
+     * Put zero or more {@link Enum} values into this document or section with the given key. Any existing
+     * values with the same key will be entirely replaced.
+     * <p>
+     * If an empty array of values is supplied, an empty value will be inserted. This will 
+     * always be output by an {@link INIWriter}, but for an {@link INIReader} to be able 
+     * to correctly read this, {@link INIReader.Builder#withEmptyValues(boolean)}
+     * must be <code>true</code>. 
+     * 
+     * @param key key to store value under
+     * @param values values to store
+     */
+    @SuppressWarnings("unchecked")
+	<E extends Enum<E>> void putAllEnum(String key, E... values);
 
     /**
      * Put zero or more string values into this document or section with the given key. Any existing
@@ -1398,6 +1459,80 @@ public interface Data {
     }
     
     /**
+     * Get an {@link Enum} value given it's key. If the key does not exist, 
+     * an {@link IllegalArgumentException} will be thrown. If there are multiple
+     * values for a key, the first value will be returned.
+     *  
+     * @param type type
+     * @param key key
+     * @return value
+     */
+    default <E extends Enum<E>> E getEnum(Class<E> type, String key) {
+   		return Enum.valueOf(type, get(key));
+    }
+
+    /**
+     * Get a single {@link Enum} value given it's key, or a default value if does not exist.
+     * If there are multiple values for a key, the first value will be returned.
+     *   
+     * @param type type
+     * @param key key
+     * @param defaultValue default value
+     * @return value or default
+     */
+    default <E extends Enum<E>> E getEnum(Class<E> type, String key, E defaultValue) {
+        return getEnumOr(type, key).orElse(defaultValue);
+    }
+
+    /**
+     * Get a single {@link Enum} value given it's key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. If there are multiple values for a key, the first value will be returned.
+     *  
+     * @param key key
+     * @return optional value
+     */
+    default <E extends Enum<E>> Optional<E> getEnumOr(Class<E> type, String key) {
+        return getOr(key).map(i -> Enum.valueOf(type, i));
+    }
+
+    /**
+     * Get all {@link Enum} values given a key. If no such key exists, an
+     * {@link IllegalArgumentException} will be thrown. The returned array
+     * may potentially be empty, but never <code>null</code>.
+     *  
+     * @param key key
+     * @return values
+     */
+    @SuppressWarnings("unchecked")
+	default <E extends Enum<E>> E[] getAllEnum(Class<E> type, String key) {
+        return (E[]) Arrays.asList(getAll(key)).stream().map(v -> Enum.valueOf(type, v)).collect(Collectors.toList()).toArray();
+    }
+
+    /**
+     * Get all {@link Enum} values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
+    default  <E extends Enum<E>> E[] getAllEnumElse(Class<E> type, String key, @SuppressWarnings("unchecked") E... defaultValues) {
+        return getAllEnumOr(type, key).orElse((E[])defaultValues);
+    }
+
+    /**
+     * Get all {@link Enum} values given a key. If no such key exists, {@link Optional#isEmpty()}
+     * will return <code>true</code>. The returned array may potentially be empty.
+     *  
+     * @param key key
+     * @return optional value
+     */
+    @SuppressWarnings("unchecked")
+	default <E extends Enum<E>> Optional<E[]> getAllEnumOr(Class<E> type, String key) {
+        var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Enum.valueOf(type, v)).toArray());
+        return arr.isEmpty() ? Optional.empty() : Optional.of((E[])arr.get());
+    }
+    
+    /**
      * Receive notifications when a value is updated
      * 
      * @param callback callback
@@ -1461,7 +1596,7 @@ public interface Data {
         return l;
     }
 
-    private static Collection<Boolean> arrayToList(boolean[] values) {
+    public static Collection<Boolean> arrayToList(boolean[] values) {
         var l = new ArrayList<Boolean>(values.length);
         for(var v : values)
             l.add(v);
