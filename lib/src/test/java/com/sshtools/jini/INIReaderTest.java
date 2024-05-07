@@ -201,13 +201,14 @@ public final class INIReaderTest {
         assertEquals(1, ini.values().size());
         var sec1 = ini.section("Section1");
         assertEquals(1, sec1.values().size());
+        assertEquals("Section1", String.join(".", sec1.path()));
         assertEquals("S1Val1", sec1.get("S1Key1"));
         assertEquals(1, sec1.sections().size());
         var sec2 = sec1.section("Section2");
         assertEquals(1, sec2.values().size());
+        assertEquals("Section1.Section2", String.join(".", sec2.path()));
         assertEquals("S1S2Val1", sec2.get("S1S2Key1"));
         assertEquals(0, sec2.sections().size());
-        System.out.println(ini);
     }
 
     @Test

@@ -184,6 +184,11 @@ public interface Data {
         }
 
         @Override
+		public boolean empty() {
+			return sections.isEmpty() && values.isEmpty();
+		}
+
+		@Override
 		public Handle onValueUpdate(ValueUpdate listener) {
         	valueUpdate.add(listener);
 			return () -> valueUpdate.remove(listener);
@@ -392,7 +397,7 @@ public interface Data {
         }
 
         @Override
-        public String toString() {
+        public String asString() {
             return new INIWriter.Builder().build().write(this);
         }
 
@@ -468,7 +473,9 @@ public interface Data {
      */
     Set<String> keys();
 
-    Optional<Section> parentOr();
+    String asString();
+
+	Optional<Section> parentOr();
     
     default String[] path() {
     	return new String[0];
@@ -479,6 +486,8 @@ public interface Data {
 	int size();
 
 	void clear();
+	
+    boolean empty();
 
 	/**
      * Get the map of the underlying values. The returned array of values

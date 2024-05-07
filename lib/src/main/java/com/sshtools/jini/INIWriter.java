@@ -223,10 +223,10 @@ public class INIWriter extends AbstractIO {
         }
     }
 
-    public String quote(String value) {
+    public String quote(int depth, String value) {
         switch (stringQuoteMode) {
         case NEVER:
-            return escape(value);
+            return escape(value, false);
         case ALWAYS:
             break;
         case SPECIAL:
@@ -238,15 +238,34 @@ public class INIWriter extends AbstractIO {
                 return value;
             break;
         }
-        return quoteCharacter + escape(value) + quoteCharacter;
+        return quoteCharacter + lineContinuations(depth, escape(value, true)) + quoteCharacter;
     }
 
-    public String[] quote(String[] values) {
+    public String[] quote(int depth, String[] values) {
     	var newVals = new String[values.length];
         for (int i = 0; i < values.length; i++) {
-            newVals[i] = quote(values[i]);
+            newVals[i] = quote(depth, values[i]);
         }
         return newVals;
+    }
+    
+    private String lineContinuations(int depth, String value) {
+    	var lines = value.split("\\\\n");
+    	if(lines.length > 1) {
+    		var buf = new StringBuffer();
+    		for(int i = 0 ; i < lines.length; i++) {
+    			if(i > 0) {
+    				buf.append("\\n\\\n");
+    				for(int j = 0 ; j < Math.min(2,  depth * 4); j++) {
+    					buf.append(' ');
+    				}
+    			}
+    			buf.append(lines[i]);
+    		}
+    		return buf.toString();
+    	}
+    	else
+    		return value;
     }
 
     private boolean needsAutoQuote(String value) {
@@ -266,8 +285,11 @@ public class INIWriter extends AbstractIO {
     }
 
 
-    private String escape(String value) {
+    private String escape(String value, boolean quoted) {
     	switch(escapeMode) {
+    	case QUOTED:
+    		if(!quoted)
+    			return value;
     	case ALWAYS:
             value = value.replace("\\", "\\\\");
             value = value.replace("\r", "\\r");
@@ -294,7 +316,7 @@ public class INIWriter extends AbstractIO {
             if (sections.length < 2) {
                 if(newline.get())
                     pw.println();
-                pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path)));
+                pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
                 if (sections.length == 1) {
                     sections[0].rawValues().forEach((k, v) -> writeProperty(depth + 1, pw, k, v));
                     newline.set(true);
@@ -313,7 +335,7 @@ public class INIWriter extends AbstractIO {
     private void writeProperty(int depth, PrintWriter pw, String key, String... values) {
         if (values.length == 0) {
             if(emptyValues) {
-                pw.format("%s%s", indent(depth), escape(key));
+                pw.format("%s%s", indent(depth), escape(key, false));
                 if(emptyValuesHaveSeparator) {
                     if(valueSeparatorWhitespace) {
                         pw.println(" = ");
@@ -327,16 +349,16 @@ public class INIWriter extends AbstractIO {
                 }
             }
         } else if (values.length == 1) {
-            writeOneProperty(depth, pw, key, quote(values[0]));
+            writeOneProperty(depth, pw, key, quote(depth, values[0]));
         } else {
             if (multiValueMode == MultiValueMode.REPEATED_KEY) {
                 for (var v : values)
                     writeProperty(depth, pw, key, v);
             } else {
                 if (trimmedValue)
-                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(values)));
+                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(depth, values)));
                 else
-                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator), quote(values)));
+                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator), quote(depth, values)));
             }
         }
     }
@@ -350,9 +372,9 @@ public class INIWriter extends AbstractIO {
 
     private void writeOneProperty(int depth, PrintWriter pw, String key, String value) {
         if (valueSeparatorWhitespace)
-            pw.println(String.format("%s%s %s %s", indent(depth), escape(key), Character.valueOf(valueSeparator), value));
+            pw.println(String.format("%s%s %s %s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
         else
-            pw.println(String.format("%s%s%s%s", indent(depth), escape(key), Character.valueOf(valueSeparator), value));
+            pw.println(String.format("%s%s%s%s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
     }
 
 }

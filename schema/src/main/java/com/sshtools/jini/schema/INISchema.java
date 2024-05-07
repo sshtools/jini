@@ -21,7 +21,7 @@ import com.sshtools.jini.WrappedINI;
 public class INISchema {
 
 	public enum Type {
-		ENUM, BOOLEAN, TEXT, NUMBER, LIST, LOCATION, FLOAT, COLOR
+		SECTION, ENUM, BOOLEAN, TEXT, NUMBER, LIST, LOCATION, FLOAT, COLOR
 	}
 
 	public final static class Builder {
@@ -58,8 +58,10 @@ public class INISchema {
 		private final Optional<String> description;
 		private final String[] path;
 		private final List<KeyDescriptor> keys;
+		private final List<SectionDescriptor> sections;
 
 		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
+				List<SectionDescriptor> sections,
 				String... path) {
 			super();
 			this.key = key;
@@ -67,6 +69,7 @@ public class INISchema {
 			this.path = path;
 			this.description = description;
 			this.keys = keys;
+			this.sections = sections;
 		}
 
 		public String name() {
@@ -75,6 +78,10 @@ public class INISchema {
 
 		public List<KeyDescriptor> keys() {
 			return keys;
+		}
+
+		public List<SectionDescriptor> sections() {
+			return sections;
 		}
 
 		public String[] path() {
@@ -105,6 +112,9 @@ public class INISchema {
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
 				Optional<String> description) {
 			super();
+			if(type.equals(Type.SECTION)) {
+				throw new IllegalArgumentException("A key may not be of type " + Type.SECTION);
+			}
 			this.key = key;
 			this.name = name;
 			this.type = type;
@@ -163,7 +173,7 @@ public class INISchema {
 	 * <p>
 	 * Any attempt to put any value that would be considered invalid by the schema
 	 * into the document.
-	 * 
+	 *
 	 * @param document base document
 	 * @return validated document
 	 */
@@ -171,24 +181,44 @@ public class INISchema {
 		return new RootWrapper(document, this);
 	}
 
-	public List<SectionDescriptor> sections(String... path) {
-		return sections(null, path);
-	}
+//	public List<SectionDescriptor> sections(String... path) {
+//		return sections(null, path);
+//	}
+//
+//	public List<SectionDescriptor> sections(Data parent, String... path) {
+//		var fullPath = parent == null ? path : INI.merge(parent.path(), path);
+//		System.out.println("Getting all sections in '" + String.join(".", parent.path()) + "' for path '" + String.join(".", path) + "' which makes '" + String.join(".", fullPath) + "'");
+//		Section[] allSecs = ini.allSectionsOr(fullPath).orElse(new Section[0]);
+//		if(allSecs.length == 0)
+//			return Collections.emptyList();
+//		else {
+//			Section[] childSections = allSecs[0].allSections();
+//			return Arrays.asList(childSections).stream().
+//					filter(sec -> typeForSection(sec).equals(Type.SECTION) ).
+//					map(this::sectionDescriptor).
+//					collect(Collectors.toList());
+//		}
+//	}
 
-	public List<SectionDescriptor> sections(Data parent, String... path) {
-		var fullPath = parent == null ? path : INI.merge(parent.path(), path);
-		return Arrays.asList(ini.allSectionsOr(fullPath).orElse(new Section[0])).stream().map(this::sectionDescriptor)
-				.collect(Collectors.toList());
+	private static Type typeForSection(Section sec) {
+		return sec.getEnumOr(Type.class, "type").orElse(Type.SECTION);
 	}
 
 	public SectionDescriptor section(String... path) {
 		return section(null, path);
 	}
 
+	public Optional<SectionDescriptor> sectionOr(String... path) {
+		return sectionOr(null, path);
+	}
+
 	public SectionDescriptor section(Data parent, String... path) {
+		return sectionOr(parent, path).orElseThrow(() -> new IllegalArgumentException("No such section."));
+	}
+
+	public Optional<SectionDescriptor> sectionOr(Data parent, String... path) {
 		var fullPath = parent == null ? path : INI.merge(parent.path(), path);
-		return ini.sectionOr(fullPath).map(this::sectionDescriptor)
-				.orElseThrow(() -> new IllegalArgumentException("No such section."));
+		return ini.sectionOr(fullPath).map(this::sectionDescriptor);
 	}
 
 	public Optional<KeyDescriptor> keyOr(String key) {
@@ -209,22 +239,41 @@ public class INISchema {
 
 	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
 		return ini.sectionOr(secpath)
-			.map(sec ->  
+			.map(sec ->
 				new KeyDescriptor(
-					secpath[secpath.length - 1], 
-					sec.getOr("name").orElse(secpath[secpath.length - 1]), 
-					sec.getEnumOr(Type.class, "type").orElse(Type.TEXT),
-					sec.getAllOr("value"), 
-					sec.getAllElse("default-value"), 
+					secpath[secpath.length - 1],
+					sec.getOr("name").orElse(secpath[secpath.length - 1]),
+					typeForSection(sec),
+					sec.getAllOr("value"),
+					sec.getAllElse("default-value"),
 					sec.getOr("description"))
 			);
 	}
 
 	private SectionDescriptor sectionDescriptor(Section section) {
+		var type = typeForSection(section);
+		if(!type.equals(Type.SECTION)) {
+			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION);
+		}
+
+		var sections = section.sections();
 		return new SectionDescriptor(
-				section.key(), section.get("name", section.key()), section.getOr("description"), section.sections()
-						.values().stream().map(k -> keyOr(section, k[0].key()).get()).collect(Collectors.toList()),
-				section.path());
+				section.key(), 
+				section.get("name", section.key()), 
+				section.getOr("description"), 
+				sections.values().stream().
+					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
+					map(k -> {
+						return keyOr(section, k[0].key()).
+								orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
+					}).collect(Collectors.toList()), 
+				sections.values().stream().
+						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
+						map(k -> { 
+							return sectionDescriptor(k[0]); 
+						}).collect(Collectors.toList()),
+				section.path()
+		);
 	}
 
 	private String[] schemaSectionPath(Section section, String key) {
@@ -257,9 +306,9 @@ public class INISchema {
 				return res;
 			} else {
 				var meta = userObject.keyOr(this, key);
-				if(meta.isEmpty())
+				if(meta.isEmpty()) {
 					return Optional.empty();
-				else {
+				} else {
 					var def = meta.map(KeyDescriptor::defaultValues);
 					return Optional.of(def.orElse(new String[0]));
 				}
@@ -267,14 +316,34 @@ public class INISchema {
 		}
 
 		@Override
+		public Optional<Section[]> allSectionsOr(String... path) {
+			Section[] allSections = super.allSectionsOr(path).orElse(new Section[0]);
+			var mgr = new LinkedHashMap<String, Section[]>(Arrays.asList(allSections).stream().collect(Collectors.toMap(Section::key, (s) -> {
+				return new Section[] { s };
+			})));
+			addSchemaSections(mgr, path);
+			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
+			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.stream().map(sec -> wrapSection(sec)).collect(Collectors.toList()).toArray(new Section[0]));
+		}
+
+		@Override
 		public Map<String, Section[]> sections() {
-			var mgr = new HashMap<>(super.sections());
-//			userObject.sections(path()).stream().forEach(sd -> {
-//				if(!mgr.containsKey(sd.key())) {
-//					mgr.put(sd.key(), new Section[] { delegate.create(sd.key()) });
-//				}
-//			});
+			var mgr = new LinkedHashMap<>(super.sections());
+			addSchemaSections(mgr, path());
 			return mgr;
+		}
+
+		private void addSchemaSections(HashMap<String, Section[]> mgr, String... path) {
+			userObject.sectionOr(this, path).ifPresent(sd -> {
+				if(path.length == 0) {
+					for(var sec : sd.sections()) {
+						mgr.put(sec.key(), new Section[] { delegate.create(sec.key()) });
+					}
+				}
+				else {
+					mgr.put(sd.key(), new Section[] { delegate.create(sd.key()) });
+				}
+			});
 		}
 
 		@Override
@@ -353,8 +422,9 @@ public class INISchema {
 		public final Section parent() {
 			if (parent instanceof Section) {
 				return (Section) parent;
-			} else
+			} else {
 				throw new IllegalStateException("Root section.");
+			}
 		}
 
 	}

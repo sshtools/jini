@@ -25,6 +25,11 @@ public class WrappedINI {
 		}
 
 		@Override
+        public boolean empty() {
+        	return delegate.empty();
+        }
+        
+		@Override
 		public Optional<String[]> getAllOr(String key) {
 			return delegate.getAllOr(key);
 		}
@@ -118,7 +123,7 @@ public class WrappedINI {
 		}
 
         @Override
-        public String toString() {
+        public String asString() {
             return new INIWriter.Builder().build().write(this);
         }
 
@@ -173,7 +178,7 @@ public class WrappedINI {
 		}
 
 		@Override
-		public final Optional<Section[]> allSectionsOr(String... path) {
+		public Optional<Section[]> allSectionsOr(String... path) {
 			return delegate.allSectionsOr(path).map(this::wrapSections);
 		}
 

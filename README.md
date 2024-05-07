@@ -185,6 +185,7 @@ Note that a `store` is scoped, and should be closed when finished with.
 ### 0.3.2
 
  * More work on `INISchema`, can now wrap an `INI` to provide a proxied instance that guarantees correctness.
+ * Created `jini-config` module that can be used to provide a monitored INI based configuration system for applications.
 
 ### 0.3.1
 

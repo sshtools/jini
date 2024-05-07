@@ -71,6 +71,7 @@
         <module>lib</module>
         <module>prefs</module>
         <module>schema</module>
+        <module>config</module>
     </modules>
     <dependencies>
         <dependency>

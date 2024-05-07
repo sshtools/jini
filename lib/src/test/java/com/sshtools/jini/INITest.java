@@ -199,7 +199,7 @@ public class INITest {
     @Test
     public void testEmpty() throws Exception {
     	assertThrows(UnsupportedOperationException.class, () -> {
-            var ini = INI.empty();
+            var ini = INI.blank();
             assertEquals(0, ini.keys().size());
             assertEquals(0, ini.sections().size());
             ini.put("abc", true);

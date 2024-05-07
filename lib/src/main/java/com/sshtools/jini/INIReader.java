@@ -662,7 +662,7 @@ public final class INIReader extends AbstractIO {
 	                    }
 	
 	                    var parent = rootSections;
-	                    Section lastSection = null;
+	                    Data lastSection = null;
 	
 	                    for (int sectionIdx = 0; sectionIdx < sectionPath.length; sectionIdx++) {
 	                        var sectionKey = sectionPath[sectionIdx];
@@ -713,7 +713,7 @@ public final class INIReader extends AbstractIO {
 	                            }
 	                        }
 	                        parent = sectionsForKey[0].sections();
-	                        section = (SectionImpl)sectionsForKey[0];
+	                        lastSection = section = (SectionImpl)sectionsForKey[0];
 	                    }
 	                }
 	            } else {

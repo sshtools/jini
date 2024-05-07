@@ -119,8 +119,7 @@ public interface INI extends Data {
 	/**
 	 * Empty, read-only document
 	 */
-	
-	static INI empty() {
+	static INI blank() {
 		return EmptyContainer.empty;
 	}
     
@@ -712,7 +711,6 @@ public interface INI extends Data {
 		 * @return parent
 		 */
 		Section parent();
-    	
     }
     
     final static class SectionImpl extends AbstractData implements Section {
@@ -724,7 +722,7 @@ public interface INI extends Data {
 				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key, Optional<Interpolator> interpolator,
                 Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
 			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
-            this.parent = Optional.of(parent);
+			this.parent = Optional.of(parent);
             this.key = key;
             Data p = parent;
             INI ini;
