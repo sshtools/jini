@@ -323,7 +323,7 @@ public class INISchema {
 			})));
 			addSchemaSections(mgr, path);
 			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
-			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.stream().map(sec -> wrapSection(sec)).collect(Collectors.toList()).toArray(new Section[0]));
+			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
 		}
 
 		@Override
@@ -337,11 +337,13 @@ public class INISchema {
 			userObject.sectionOr(this, path).ifPresent(sd -> {
 				if(path.length == 0) {
 					for(var sec : sd.sections()) {
-						mgr.put(sec.key(), new Section[] { delegate.create(sec.key()) });
+						if(!mgr.containsKey(sec.key()))
+							mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
 					}
 				}
 				else {
-					mgr.put(sd.key(), new Section[] { delegate.create(sd.key()) });
+					if(!mgr.containsKey(sd.key()))
+						mgr.put(sd.key(), new Section[] { wrapSection(delegate.create(sd.key())) });
 				}
 			});
 		}

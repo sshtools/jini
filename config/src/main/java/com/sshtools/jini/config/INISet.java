@@ -90,6 +90,13 @@ public final class INISet implements Closeable {
 
 		@Override
 		public final Optional<String[]> getAllOr(String key) {
+			var path = path();
+			if(path.length > 0) {
+				var var = System.getProperty("slf4jtty." +String.join(".", path) + "." + key);
+				if(var != null) {
+					return Optional.of(new String[] { var });
+				}
+			}
 			return delegate.getAllOr(key);
 		}
 
@@ -149,7 +156,7 @@ public final class INISet implements Closeable {
 		}
 
 		private void doOnWritable(String key, Consumer<Data> task) {
-			var ref = userObject.ref(Scope.USER);
+			var ref = userObject.ref(userObject.writeScope.orElse(Scope.USER));
 			try {
 				var wtrbl = ref.writable();
 				var wtrblDoc = wtrbl.document();
@@ -229,12 +236,14 @@ public final class INISet implements Closeable {
 	}
 
 	public final static class Builder {
+		private Optional<Scope> writeScope = Optional.empty();
 		private Optional<INISchema> schema = Optional.empty();
 		private Optional<INI> defaultIni = Optional.empty();
 		private Optional<String> app = Optional.empty();
 		private Optional<Monitor> monitor = Optional.empty();
 		private Map<Scope, Path> paths = new HashMap<>();
 		private List<Scope> scopes = new ArrayList<>();
+		private boolean systemPropertyOverrides = true;
 
 		private final String name;
 
@@ -242,9 +251,22 @@ public final class INISet implements Closeable {
 			this.name = name;
 		}
 
+		public Builder withoutSystemPropertyOverrides() {
+			return withSystemPropertyOverrides(false);
+		}
+
+		public Builder withSystemPropertyOverrides(boolean systemPropertyOverrides) {
+			this.systemPropertyOverrides = systemPropertyOverrides;
+			return this;
+		}
 
 		public Builder withMonitor(Monitor monitor) {
 			this.monitor = Optional.of(monitor);
+			return this;
+		}
+
+		public Builder withWriteScope(Scope scope) {
+			this.writeScope = Optional.of(scope);
 			return this;
 		}
 
@@ -395,13 +417,16 @@ public final class INISet implements Closeable {
 	private final String name;
 	private final Optional<Monitor> monitor;
 	private final INI master;
+	private final Optional<Scope> writeScope;
 
 	private final ScheduledExecutorService executor;
 	private ScheduledFuture<?> reloadTask;
 	private final INI wrapper;
+	private final boolean systemPropertyOverrides;
 
 	private INISet(Builder builder) {
 		this.monitor = builder.monitor;
+		this.systemPropertyOverrides = builder.systemPropertyOverrides;
 		this.schema = builder.schema;
 		this.defaultIni = builder.defaultIni;
 		this.app = builder.app.orElse(DEFAULT_APP_NAME);
@@ -409,6 +434,7 @@ public final class INISet implements Closeable {
 		this.name = builder.name;
 		this.scopes = Collections.unmodifiableList(new ArrayList<>(builder.scopes));
 		this.executor = Executors.newSingleThreadScheduledExecutor();
+		this.writeScope = builder.writeScope;
 
 		master = load();
 		
