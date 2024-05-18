@@ -761,7 +761,10 @@ public final class INIReader extends AbstractIO {
                     	   				lastAppendedLine != lineNo 
 	                    	   	) ) {
 	                        /* Doesn't exist, just add */
-	                        sectionProperties.put(key, new String[] { val });
+	                    	if(val.equals(""))
+	                    		sectionProperties.put(key, new String[0]);
+	                    	else
+	                    		sectionProperties.put(key, new String[] { val });
 	                        lastAppendedLine = lineNo;
 	                    } else {
 	                        switch (duplicateKeysAction) {

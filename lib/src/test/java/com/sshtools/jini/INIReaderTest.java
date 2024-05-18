@@ -96,6 +96,20 @@ public final class INIReaderTest {
     }
     
     @Test
+    public void testKeysOnly() throws IOException, ParseException {
+        var ini = new INIReader.Builder()
+                .build().read(
+                        "S1aK1\n" +
+                        "S1bK1\n"); 
+        assertEquals(2, ini.values().size());
+        assertEquals(0, ini.getAll("S1aK1").length);
+        assertEquals(0, ini.getAll("S1bK1").length);
+        assertEquals("DEF", ini.get("S1aK2", "DEF"));
+        assertEquals(123, ini.getInt("S1aK2", 123));
+        assertThrows(IllegalArgumentException.class, () -> ini.get("S1aK1"));
+    }
+    
+    @Test
     public void testReplaceDuplicateKeys() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.REPLACE)
                 .build().read(

@@ -300,6 +300,21 @@ public final class INISet implements Closeable {
 			}
 		}
 
+		public Builder withOptionalDefault(Class<?> base, String resource) {
+			try {
+				var in = base.getResourceAsStream(resource);
+				if(in == null)
+					return this;
+				try {
+					return withDefault(in);
+				} finally {
+					in.close();
+				}
+			} catch (IOException ioe) {
+				throw new UncheckedIOException(ioe);
+			}
+		}
+
 		public Builder withSchema(Path path) {
 			return withSchema(INISchema.fromFile(path));
 		}
