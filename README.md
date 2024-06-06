@@ -37,7 +37,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.2</version>
 </dependency>
     
 ```
@@ -129,7 +129,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.2</version>
 </dependency>
 ```
 

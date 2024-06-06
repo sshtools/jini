@@ -101,6 +101,9 @@ public class Monitor implements Closeable {
 				synchronized (pending) {
 
 					var onChange = callbacks.get(key);
+					if(onChange == null) {
+						return;
+					}
 
 					for (var event : key.pollEvents()) {
 						var kind = event.kind();

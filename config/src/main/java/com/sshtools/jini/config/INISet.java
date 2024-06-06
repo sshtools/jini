@@ -7,8 +7,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.text.MessageFormat;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,7 +48,7 @@ import com.sshtools.jini.schema.INISchema;
  * scoped files may be written.
  * <p>
  * Every scoped file may have a counterpart drop-in directory, e.g.
- * ~/.config/pretty/pretty.d. All files in here are read as if they were a
+ * ~/.config/jini/jini.d. All files in here are read as if they were a
  * section in the primary file with the same name as the file.
  * <p>
  * Files are in the order ..
@@ -63,7 +65,7 @@ import com.sshtools.jini.schema.INISchema;
  */
 public final class INISet implements Closeable {
 
-	private static final String DEFAULT_APP_NAME = "pretty";
+	private static final String DEFAULT_APP_NAME = "jini";
 	private final static String os = System.getProperty("os.name", "unknown").toLowerCase();
 
 	private abstract static class AbstractWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SectionWrapper> {
@@ -158,8 +160,7 @@ public final class INISet implements Closeable {
 		private void doOnWritable(String key, Consumer<Data> task) {
 			var ref = userObject.ref(userObject.writeScope.orElse(Scope.USER));
 			try {
-				var wtrbl = ref.writable();
-				var wtrblDoc = wtrbl.document();
+				var wtrblDoc = ref.document();
 				if (delegate instanceof INI) {
 					task.accept(wtrblDoc);
 				} else {
@@ -168,7 +169,7 @@ public final class INISet implements Closeable {
 					var wtrblSec = wtrblDoc.obtainSection(thisSectionPath);
 					task.accept(wtrblSec);
 				}
-				wtrbl.write();
+				ref.write();
 			} catch (IOException ioe) {
 				throw new UncheckedIOException(ioe);
 			} finally {
@@ -356,23 +357,24 @@ public final class INISet implements Closeable {
 
 	public final static class INIRef {
 		private final Optional<Path> path;
-		private final Optional<INI> ini;
 		private final Scope scope;
+		private INI ini;
 
 		INIRef(INI doc) {
 			this.scope = Scope.GLOBAL;
-			this.ini = Optional.of(doc);
+			this.ini = doc;
 			this.path = Optional.empty();
 		}
+		
 
 		public INI document() {
-			return ini.orElseThrow(() -> new IllegalStateException("No document"));
+			return ini;
 		}
 
 		INIRef(Path path, Scope scope, INI ini) {
 			this.path = Optional.of(path);
 			this.scope = scope;
-			this.ini = Optional.of(ini);
+			this.ini =ini;
 		}
 
 		INIRef(Path path, Scope scope) {
@@ -380,22 +382,14 @@ public final class INISet implements Closeable {
 			this.scope = scope;
 			if (Files.exists(path)) {
 				try {
-					ini = Optional.of(iniReader().read(path));
+					ini = iniReader().read(path);
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				} catch (ParseException e) {
 					throw new IllegalArgumentException(e);
 				}
 			} else {
-				ini = Optional.empty();
-			}
-		}
-
-		public INIRef writable() {
-			if (ini.isPresent()) {
-				return this;
-			} else {
-				return new INIRef(path.orElseThrow(() -> new IllegalStateException("No path.")), scope, INI.create());
+				ini = INI.create();
 			}
 		}
 
@@ -562,12 +556,10 @@ public final class INISet implements Closeable {
 	private INI mergeToMaster() {
 		INI master = null;
 		for (var ref : refs) {
-			if (ref.ini.isPresent()) {
-				if (master == null) {
-					master = ref.ini.get();
-				} else {
-					merge(master, ref.ini.get(), true);
-				}
+			if (master == null) {
+				master = ref.ini;
+			} else {
+				merge(master, ref.ini, true);
 			}
 		}
 		if (master == null)
