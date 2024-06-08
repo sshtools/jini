@@ -182,6 +182,12 @@ Note that a `store` is scoped, and should be closed when finished with.
 
 ## Changes
 
+### 0.3.3
+
+ * Fixes for reloading.
+ * Removal of value events not fired by `INISet`.
+
+
 ### 0.3.2
 
  * More work on `INISchema`, can now wrap an `INI` to provide a proxied instance that guarantees correctness.

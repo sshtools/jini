@@ -7,10 +7,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.FileTime;
 import java.text.MessageFormat;
 import java.text.ParseException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -684,15 +682,9 @@ public final class INISet implements Closeable {
 		}
 
 		if (!init) {
-			for (var it = oldDoc.keys().iterator(); it.hasNext();) {
-				var key = it.next();
+			for (var key : new ArrayList<>(oldDoc.keys())) {
 				if (!newDoc.contains(key)) {
-					if (!init) {
-						if (newDoc instanceof Section) {
-							var sec = (Section)newDoc;
-						} 
-					}
-					it.remove();
+					oldDoc.remove(key);
 				}
 			}
 		}
