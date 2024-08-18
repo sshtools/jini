@@ -1,5 +1,15 @@
 package com.sshtools.jini.config;
 
+import com.sshtools.jini.Data;
+import com.sshtools.jini.INI;
+import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIReader;
+import com.sshtools.jini.INIWriter;
+import com.sshtools.jini.Interpolation;
+import com.sshtools.jini.WrappedINI;
+import com.sshtools.jini.config.Monitor.MonitorHandle;
+import com.sshtools.jini.schema.INISchema;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,16 +32,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-
-import com.sshtools.jini.Data;
-import com.sshtools.jini.INI;
-import com.sshtools.jini.INI.Section;
-import com.sshtools.jini.INIReader;
-import com.sshtools.jini.INIWriter;
-import com.sshtools.jini.Interpolation;
-import com.sshtools.jini.WrappedINI;
-import com.sshtools.jini.config.Monitor.MonitorHandle;
-import com.sshtools.jini.schema.INISchema;
+import java.util.function.Supplier;
 
 /**
  * Manages a set of INI files for configuration of a particular subsystem. Every
@@ -238,16 +239,45 @@ public final class INISet implements Closeable {
 		private Optional<Scope> writeScope = Optional.empty();
 		private Optional<INISchema> schema = Optional.empty();
 		private Optional<INI> defaultIni = Optional.empty();
+        private Optional<InputStream> defaultIniStream = Optional.empty();
 		private Optional<String> app = Optional.empty();
 		private Optional<Monitor> monitor = Optional.empty();
 		private Map<Scope, Path> paths = new HashMap<>();
 		private List<Scope> scopes = new ArrayList<>();
 		private boolean systemPropertyOverrides = true;
+		private String extension = ".ini";
+		private boolean dropInDirectories = true;
+		private Optional<Supplier<INIReader.Builder>> readerFactory = Optional.empty();
+        private Optional<Supplier<INIWriter.Builder>> writerFactory = Optional.empty();
 
 		private final String name;
 
 		public Builder(String name) {
 			this.name = name;
+		}
+		
+		public Builder withReaderFactory(Supplier<INIReader.Builder> readerFactory) {
+		    this.readerFactory = Optional.of(readerFactory);
+		    return this;
+		}
+        
+        public Builder withWriterFactory(Supplier<INIWriter.Builder> writerFactory) {
+            this.writerFactory = Optional.of(writerFactory);
+            return this;
+        }
+
+		public Builder withoutDropInDirectories() {
+			return withDropInDirectories(false);
+		}
+		
+		public Builder withDropInDirectories(boolean dropInDirectories) {
+			this.dropInDirectories = dropInDirectories;
+			return this;
+		}
+		
+		public Builder withExtension(String extension) {
+			this.extension = extension;
+			return this;
 		}
 
 		public Builder withoutSystemPropertyOverrides() {
@@ -328,13 +358,8 @@ public final class INISet implements Closeable {
 		}
 
 		public Builder withDefault(InputStream in) {
-			try {
-				return withDefault(iniReader().read(in));
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			} catch (ParseException e) {
-				throw new IllegalArgumentException(e);
-			}
+			    this.defaultIniStream = Optional.of(in);
+			    return this;
 		}
 
 		public Builder withDefault(INI defaultIni) {
@@ -352,16 +377,22 @@ public final class INISet implements Closeable {
 		}
 
 	}
+	
+	private static INIReader.Builder defaultReader() {
+        return new INIReader.Builder().withInterpolator(Interpolation.defaults());
+	}
 
 	public final static class INIRef {
 		private final Optional<Path> path;
 		private final Scope scope;
 		private INI ini;
+        private final Optional<Supplier<com.sshtools.jini.INIWriter.Builder>> writerFactory;
 
-		INIRef(INI doc) {
+		INIRef(INI doc, Optional<Supplier<com.sshtools.jini.INIWriter.Builder>> writerFactory) {
 			this.scope = Scope.GLOBAL;
 			this.ini = doc;
 			this.path = Optional.empty();
+			this.writerFactory = writerFactory;
 		}
 		
 
@@ -369,18 +400,13 @@ public final class INISet implements Closeable {
 			return ini;
 		}
 
-		INIRef(Path path, Scope scope, INI ini) {
+		INIRef(Path path, Scope scope, Optional<Supplier<INIReader.Builder>> readerFactory, Optional<Supplier<INIWriter.Builder>> writerFactory) {
 			this.path = Optional.of(path);
 			this.scope = scope;
-			this.ini =ini;
-		}
-
-		INIRef(Path path, Scope scope) {
-			this.path = Optional.of(path);
-			this.scope = scope;
+			this.writerFactory = writerFactory;
 			if (Files.exists(path)) {
 				try {
-					ini = iniReader().read(path);
+					ini = readerFactory.map(Supplier::get).orElseGet(INISet::defaultReader).build().read(path);
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				} catch (ParseException e) {
@@ -392,9 +418,13 @@ public final class INISet implements Closeable {
 		}
 
 		public void write() throws IOException {
-			new INIWriter.Builder().build().write(document(),
+		    writerFactory.map(Supplier::get).orElseGet(this::defaultWriterBuilder).build().write(document(),
 					path.orElseThrow(() -> new IllegalStateException("No path.")));
 		}
+
+	    protected INIWriter.Builder defaultWriterBuilder() {
+	        return new INIWriter.Builder();
+	    }
 
 		public boolean isWritable() {
 			return path.isPresent() && Files.isWritable(path.get());
@@ -417,6 +447,7 @@ public final class INISet implements Closeable {
 	private final Optional<INI> defaultIni;
 	private List<Scope> scopes = new ArrayList<>();
 	private final String app;
+	private final String extension;
 	private final Map<Scope, Path> paths;
 	private final List<INIRef> refs = new ArrayList<>();
 	private final List<MonitorHandle> handles = new ArrayList<>();
@@ -430,12 +461,31 @@ public final class INISet implements Closeable {
 	private ScheduledFuture<?> reloadTask;
 	private final INI wrapper;
 	private final boolean systemPropertyOverrides;
+	private final boolean dropInDirectories;
+    private final Optional<Supplier<INIReader.Builder>> readerFactory;
+    private final Optional<Supplier<INIWriter.Builder>> writerFactory;
 
 	private INISet(Builder builder) {
+	    this.readerFactory = builder.readerFactory;
+	    this.writerFactory = builder.writerFactory;
 		this.monitor = builder.monitor;
+		this.dropInDirectories = builder.dropInDirectories;
+		this.extension = builder.extension;
 		this.systemPropertyOverrides = builder.systemPropertyOverrides;
 		this.schema = builder.schema;
-		this.defaultIni = builder.defaultIni;
+		if(builder.defaultIniStream.isPresent()) {
+		    try(var in = builder.defaultIniStream.get()) {
+		        this.defaultIni = Optional.of(readerFactory.map(Supplier::get).orElseGet(INISet::defaultReader).build().read(in));
+		    } catch (IOException e) {
+		        throw new UncheckedIOException(e);
+            } catch (ParseException e) {
+                throw new IllegalArgumentException(e);
+            }
+		}
+		else {
+		    this.defaultIni = builder.defaultIni;
+		};
+		
 		this.app = builder.app.orElse(DEFAULT_APP_NAME);
 		this.paths = Collections.unmodifiableMap(new HashMap<>(builder.paths));
 		this.name = builder.name;
@@ -535,7 +585,7 @@ public final class INISet implements Closeable {
 
 	private INI load() {
 		/* First add the default, if any */
-		defaultIni.ifPresent(doc -> refs.add(new INIRef(doc)));
+		defaultIni.ifPresent(doc -> refs.add(new INIRef(doc, writerFactory)));
 
 		if (scopes.isEmpty()) {
 			load(Scope.GLOBAL);
@@ -545,10 +595,6 @@ public final class INISet implements Closeable {
 		}
 
 		return mergeToMaster();
-	}
-
-	private static INIReader iniReader() {
-		return new INIReader.Builder().withInterpolator(Interpolation.defaults()).build();
 	}
 
 	private INI mergeToMaster() {
@@ -567,7 +613,7 @@ public final class INISet implements Closeable {
 
 	private void load(Scope scope) {
 		var path = appPathForScope(scope);
-		var setRootPath = path.resolve(name + ".ini");
+		var setRootPath = path.resolve(name + extension);
 		var setRootDirPath = path.resolve(name + ".d");
 
 		/*
@@ -582,18 +628,18 @@ public final class INISet implements Closeable {
 		}
 
 		/* Next look for <name>.ini as a file */
-		refs.add(new INIRef(setRootPath, scope));
+		refs.add(new INIRef(setRootPath, scope, readerFactory, writerFactory));
 
 		if (Files.exists(path)) {
 
 			/* Now look for <name>.d as a directory */
-			if (Files.exists(setRootDirPath)) {
+			if (dropInDirectories && Files.exists(setRootDirPath)) {
 				
 				try (var strm = Files.newDirectoryStream(setRootDirPath,
-						f -> f.getFileName().toString().endsWith(".ini"))) {
+						f -> f.getFileName().toString().endsWith(extension))) {
 
 					strm.forEach(p -> {
-						refs.add(new INIRef(p, scope)); 
+						refs.add(new INIRef(p, scope, readerFactory, writerFactory)); 
 					});
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
