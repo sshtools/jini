@@ -251,6 +251,7 @@ public final class INISet implements Closeable {
         private Optional<Supplier<INIWriter.Builder>> writerFactory = Optional.empty();
 
 		private final String name;
+		public boolean closeDefaultIniStream;
 
 		public Builder(String name) {
 			this.name = name;
@@ -322,26 +323,15 @@ public final class INISet implements Closeable {
 		}
 
 		public Builder withDefault(Class<?> base, String resource) {
-			try (var in = base.getResourceAsStream(resource)) {
-				return withDefault(in);
-			} catch (IOException ioe) {
-				throw new UncheckedIOException(ioe);
-			}
+			closeDefaultIniStream = true;
+			return withDefault(base.getResourceAsStream(resource));
 		}
 
 		public Builder withOptionalDefault(Class<?> base, String resource) {
-			try {
-				var in = base.getResourceAsStream(resource);
-				if(in == null)
-					return this;
-				try {
-					return withDefault(in);
-				} finally {
-					in.close();
-				}
-			} catch (IOException ioe) {
-				throw new UncheckedIOException(ioe);
-			}
+			var in = base.getResourceAsStream(resource);
+			if(in == null)
+				return this;
+			return withDefault(in);
 		}
 
 		public Builder withSchema(Path path) {
@@ -358,8 +348,8 @@ public final class INISet implements Closeable {
 		}
 
 		public Builder withDefault(InputStream in) {
-			    this.defaultIniStream = Optional.of(in);
-			    return this;
+		    this.defaultIniStream = Optional.of(in);
+		    return this;
 		}
 
 		public Builder withDefault(INI defaultIni) {
@@ -474,12 +464,21 @@ public final class INISet implements Closeable {
 		this.systemPropertyOverrides = builder.systemPropertyOverrides;
 		this.schema = builder.schema;
 		if(builder.defaultIniStream.isPresent()) {
-		    try(var in = builder.defaultIniStream.get()) {
+			var in = builder.defaultIniStream.get();
+		    try {
 		        this.defaultIni = Optional.of(readerFactory.map(Supplier::get).orElseGet(INISet::defaultReader).build().read(in));
 		    } catch (IOException e) {
 		        throw new UncheckedIOException(e);
             } catch (ParseException e) {
                 throw new IllegalArgumentException(e);
+            } finally {
+            	if(builder.closeDefaultIniStream) {
+            		try {
+						in.close();
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+            	}
             }
 		}
 		else {
