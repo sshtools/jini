@@ -186,6 +186,7 @@ Note that a `store` is scoped, and should be closed when finished with.
 
  * Fixes for reloading.
  * Removal of value events not fired by `INISet`.
+ * Removed schema types `FLOAT`, `LOCATION` and `COLOR`. These are now `Discriminator` enumeration instances.  There are two discriminator implementations, `TextDiscriminator` to be used for `Type.TEXT` and `NumberDiscriminator` to be used for `Type.NUMBER`. The list of discriminators is now likely to grow instead of the `Type`.
 
 
 ### 0.3.2

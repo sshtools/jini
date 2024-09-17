@@ -21,7 +21,30 @@ import com.sshtools.jini.WrappedINI;
 public class INISchema {
 
 	public enum Type {
-		SECTION, ENUM, BOOLEAN, TEXT, NUMBER, LIST, LOCATION, FLOAT, COLOR
+		SECTION, ENUM, BOOLEAN, TEXT, NUMBER, LIST;
+
+		public Discriminator discriminator(String discriminator) {
+			switch(this) {
+			case TEXT:
+				return TextDiscriminator.valueOf(discriminator);
+			case NUMBER:
+				return NumberDiscriminator.valueOf(discriminator);
+			default:
+				throw new UnsupportedOperationException("The type '" + name() + "' does not support the discriminator '" + discriminator + "'");
+			}
+		}
+	}
+	
+	public interface Discriminator {
+		
+	}
+	
+	public enum TextDiscriminator implements Discriminator {
+		LOCATION, COLOR, SECRET, PATH, IP, DIRECTORY, FILE
+	}
+	
+	public enum NumberDiscriminator implements Discriminator {
+		BIG, DOUBLE, FLOAT, INTEGER, LONG, BYTE, SHORT
 	}
 
 	public final static class Builder {
@@ -108,16 +131,18 @@ public class INISchema {
 		private final Type type;
 		private final Optional<String[]> values;
 		private final String[] defaultValues;
+		private final Optional<Discriminator> discriminator;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
-				Optional<String> description) {
+				Optional<String> description, Optional<Discriminator> discriminator) {
 			super();
 			if(type.equals(Type.SECTION)) {
-				throw new IllegalArgumentException("A key may not be of type " + Type.SECTION);
+				throw new IllegalArgumentException("Key may not be of type " + Type.SECTION);
 			}
 			this.key = key;
 			this.name = name;
 			this.type = type;
+			this.discriminator = discriminator;
 			this.values = values;
 			this.defaultValues = defaultValue;
 			this.description = description;
@@ -150,10 +175,18 @@ public class INISchema {
 		public Type type() {
 			return type;
 		}
+
+		public Optional<Discriminator> discriminatorOr() {
+			return discriminator;
+		}
 	}
 
 	public static INISchema fromFile(Path path) {
 		return new Builder().fromFile(path).build();
+	}
+
+	public static INISchema fromDocument(INI document) {
+		return new Builder().fromDocument(document).build();
 	}
 
 	public static INISchema fromInput(InputStream in) {
@@ -239,15 +272,21 @@ public class INISchema {
 
 	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
 		return ini.sectionOr(secpath)
-			.map(sec ->
-				new KeyDescriptor(
+			.map(sec -> {
+				var type = typeForSection(sec); 
+				return new KeyDescriptor(
 					secpath[secpath.length - 1],
 					sec.getOr("name").orElse(secpath[secpath.length - 1]),
-					typeForSection(sec),
+					type,
 					sec.getAllOr("value"),
 					sec.getAllElse("default-value"),
-					sec.getOr("description"))
-			);
+					sec.getOr("description"),
+					discriminatorForSection(type, sec));
+			});
+	}
+
+	private Optional<Discriminator> discriminatorForSection(Type type, Section sec) {
+		return sec.getOr("discriminator").map(d -> type.discriminator(d));
 	}
 
 	private SectionDescriptor sectionDescriptor(Section section) {
