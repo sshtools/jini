@@ -127,7 +127,7 @@ public final class INIReader extends AbstractIO {
         private boolean comments = true;
         private boolean inlineComments = true;
         private DuplicateAction duplicateKeysAction = DuplicateAction.REPLACE;
-        private DuplicateAction duplicateSectionAction = DuplicateAction.REPLACE;
+        private DuplicateAction duplicateSectionAction = DuplicateAction.APPEND;
         private char[] quoteCharacters = new char[] { '"', '\'' };
         private Optional<Interpolator> interpolator = Optional.empty();
         private Optional<String> variablePattern = Optional.empty();
@@ -712,8 +712,8 @@ public final class INIReader extends AbstractIO {
 	                                parent.put(sectionKey, sectionsForKey);
 	                            }
 	                        }
-	                        parent = sectionsForKey[0].sections();
-	                        lastSection = section = (SectionImpl)sectionsForKey[0];
+	                        parent = sectionsForKey[sectionsForKey.length - 1].sections();
+	                        lastSection = section = (SectionImpl)sectionsForKey[sectionsForKey.length - 1];
 	                    }
 	                }
 	            } else {

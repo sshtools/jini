@@ -323,8 +323,16 @@ public class INIWriter extends AbstractIO {
                     writeSections(depth + 1, pw, newline, sections[0].sections(), path);
                 }
             } else {
-                for (var v : sections) {
-                    writeSection(depth + 1, pw, path, key, newline, v);
+                for (var sec : sections) {
+                    if(newline.get())
+                        pw.println();
+                    
+                    pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
+                	sec.rawValues().forEach((k, v) -> writeProperty(depth + 1, pw, k, v));
+                    newline.set(true);
+                    writeSections(depth + 1, pw, newline, sec.sections(), path);
+                    
+//                    writeSection(depth + 1, pw, path, key, newline, v);
                 }
             }
         } finally {

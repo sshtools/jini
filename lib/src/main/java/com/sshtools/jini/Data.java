@@ -384,9 +384,12 @@ public interface Data {
                         var newSections = new Section[existing.length + 1];
                         System.arraycopy(existing, 0, newSections, 0, existing.length);
                         newSections[existing.length] = newSection;
+                        (parent == null ? sections : parent.sections()).put(name, newSections);
                     } else {
                         newSection = existing[0];
+                        (parent == null ? sections : parent.sections()).put(name, new Section[] { newSection });
                     }
+
 					fireSectionUpdate(this, newSection, UpdateType.UPDATE);
                 }
                 parent = newSection;

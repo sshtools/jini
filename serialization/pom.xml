@@ -25,9 +25,8 @@
     	<version>0.4.0-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
-    <artifactId>jini-schema</artifactId>
-    <name>Schema API and tools</name>
-    <description>Provides tools for reading schemas describing INI file, themselves INI files.</description>
+    <artifactId>jini-serialzation</artifactId>
+    <name>Serializes and deserializes Java objects to INI files</name>
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

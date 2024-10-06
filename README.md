@@ -23,7 +23,8 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * JPMS compliant.
  * Requires JDK 11 or above (JDK 17 for tests).
  * Optional [Preferences](#preferences-backing-store) implementation.
- * String interpolation with configurable variable pattern. 
+ * String interpolation with configurable variable pattern.
+ * Optional reflection based serialization and deserialization of objects.
  
 ## WIP
 
@@ -37,11 +38,22 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.3.2</version>
+    <version>0.4.0-SNAPSHOT</version>
 </dependency>
-    
 ```
 
+_See badge above for version available on Maven Central. Snapshot versions are in the [Sonatype OSS Snapshot Repository](https://oss.sonatype.org/content/repositories/snapshots/)._
+
+```xml
+<repository>
+	<id>oss-snapshots</id>
+	<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+	<snapshots />
+	<releases>
+		<enabled>false</enabled>
+	</releases>
+</repository>
+```
 ### JPMS
 
 If you are using [JPMS](https://en.wikipedia.org/wiki/Java_Platform_Module_System), add `com.sshtools.jini` to your `module-info.java`.
@@ -129,7 +141,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.3.2</version>
+    <version>0.4.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -178,9 +190,106 @@ You can also use this builder make use of the `Preferences` API without using th
 ```
 
 Note that a `store` is scoped, and should be closed when finished with.
+```
 
+## Object Serialization and De-serialization
+
+The optional `jini-serialization` module adds support for writing an object graph as human-readable INI files, as well as reading such INI files and recreating said object graph.
+
+Just add the following dependency to your project's `pom.xml`.
+
+```xml
+<dependency>
+    <groupId>com.sshtools</groupId>
+    <artifactId>jini-serialization</artifactId>
+    <version>0.4.0-SNAPSHOT</version>
+</dependency>
+```
+
+### Limitations
+
+ * Collections and Maps must provide an `itemType` for their values for de-serialization to work. 
+ * Maps currently only support `String` keys, and values can only be primitive types. 
+ * The entire object graph is serialized (subject to include / exclude rules). There is no support for object references yet.
+
+### Usage
+
+Serialization and de-serialization works using Java's reflection feature. It will look for accessible fields that are not otherwise configured to be excluded, inspect their value and convert it an entry in a INI section with a key and a string value. If the value is a complex object, it may create further INI sections and inspect the object for it's values, and so on.
+
+Sometimes fields may be not be immediately accessible, for example if they are `private`. By default, Jini will try to make such fields accessible to reflection.
+
+Modern Java has further restriction on accessing such fields, and it reflection may not be possible. In these cases, Jini will also look for accessor *methods* that can be reflected and provide the value. By default, it expects to use the JavaBean pattern, i.e. "getter" and "setter" methods. 
+
+#### Serialization - Writing An Object
+
+The entry point to serializing an object can be via a (reusable) `INISerializer` which itself cannot be constructed directly, but instead is created by `INISerializer.Builder`. Once an `INISerializer` is obtained, you then call `srlzr.serialize(myObject)` which will return an `INI` object that you mean then write as normal (e.g. using an `INIWriter`). 
+
+Alternatively, you can use one of several convenience methods.
+
+ * `INISerializer.toINI(Object object)` creates an `INI` from an `Object`. 
+ * `INISerializer.write(Object object, String path)` and `INISerializer.writer(Object object, Path path)` writes an object to a file.
+ * `INISerializer.write(Object object, Writer writer)` writes the contents of the `INI` to a `Writer`. 
+
+If your object contains only primitives, `String` and other primitive objects, `ByteBuffer`, any other `Object` that follows follows the same rules, or  arrays of such objects or primitives, then no additional code will be to allow serialization to happen.
+
+```java
+class Address {
+	String line1 = "99 Some Road";
+	String city = "Nodnol";
+}
+
+class Person {
+	String name = "Mr Crumbly";
+	int age = 99;
+	Address address = new Address();
+	String[] telephones = new String[] { "123 456789", "987 654321" };
+}
+
+INISerialize.write(new Person(), "crumbly.ini");
+```
+
+If your object contains any other `Object` that does not fit this description, or a `Collection` or `Map` of any type, then you many need to add additional meta-data (such as `itemType` to overcome type-erasure) to allow Jini to serialize the object.
+
+This can be done by either adding annotations to the target object, or using the programmatic callback API provided by `INISerializer.Builder`. This customisation also allows fields or methods to be excluded, have different `key`s used in the INI file and other behavioural changes. 
+
+#### De-serialization - Reading An Object
+
+The entry point to de-serializing an object can be via a (reusable) `INIDeserializer` which itself cannot be constructed directly, but instead is created by `INIDeserializer.Builder`. Once an `INIDeserializer` is obtained, you then call `desrlzr.deserialize(ini, MyObject.class)` which will return an instance of type `MyObject` constructed from the data in an `INI` document that you obtained as normal (e.g. using an `INIReader`). 
+
+Alternatively, you can use one of several convenience methods.
+
+ * `INIDeserializer.fromINI(INI ini, MyObject.class)` creates a `MyObject` from an `INI`. 
+ * `INIDeserializer.read(String path, MyObject.class)` and `INISerializer.read(Path path, MyObject.class)` reads an object from a file.
+ * `INISerializer.read(Reader reader, MyObject.class)` reader INI contents from a `Reader` and construct a `MyObject` from it. 
+
+```java
+class Address {
+	String line1;
+	String city;
+}
+
+class Person {
+	String name;
+	int age;
+	Address address;
+	String[] telephones;
+}
+
+var person = INIDeserializer.read("crumbly.ini", Person.class);
+```
+
+The same rules apply as in serialization, i.e. when the type of an object cannot be derived any other way it must be provided programmatically or via an annotation.  The same annotations used in serialization are also used for de-serialization.
+
+De-serialization imposes some additional requirements and restrictions too.
+
+ * All types that have no special handling, must have empty public constructors.
+ * For `Collection` and `Map` types, if you want it to be of a particular type of collection or map, you should make sure it is initialized in construction (i.e. an initialized field, or created in a default constructor). In this case it must be a modifiable. If the field is `null` when deserializing, and data for the collection is present, then an unmodifiable variant of the collections will be automatically created and filled.
 
 ## Changes
+
+### 0.4.0
+ * New `jini-serialization` module for object serialization and deserialization. See `INISerializer` and `INIDeserializer`.
+ * `duplicateSectionAction` default is now `DuplicateAction.APPEND`. This means multiple sections with the same name by default will now all be available.  
 
 ### 0.3.3
 
