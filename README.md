@@ -190,7 +190,6 @@ You can also use this builder make use of the `Preferences` API without using th
 ```
 
 Note that a `store` is scoped, and should be closed when finished with.
-```
 
 ## Object Serialization and De-serialization
 
