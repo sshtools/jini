@@ -288,7 +288,8 @@ De-serialization imposes some additional requirements and restrictions too.
 
 ### 0.4.0
  * New `jini-serialization` module for object serialization and deserialization. See `INISerializer` and `INIDeserializer`.
- * `duplicateSectionAction` default is now `DuplicateAction.APPEND`. This means multiple sections with the same name by default will now all be available.  
+ * `duplicateSectionAction` default is now `DuplicateAction.APPEND`. This means multiple sections with the same name by default will now all be available.
+ * Multi-line string support for keys and values. Wrap strings in supported quote character, e.g `''' ..... '''` in a manner similar to Java. 
 
 ### 0.3.3
 
