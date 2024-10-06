@@ -161,11 +161,11 @@ public final class INIReaderTest {
                         "[Section1]\n" +
                         "S1cK1 = V3\n"); 
         assertEquals(1, ini.sections().size());
-        var sec1 = ini.section("Section1");
-        assertEquals(3, sec1.values().size());
-        assertEquals("V1", sec1.get("S1aK1"));
-        assertEquals("V2", sec1.get("S1bK1"));
-        assertEquals("V3", sec1.get("S1cK1"));
+        var sec1 = ini.allSections("Section1");
+        assertEquals(3, sec1.length);
+        assertEquals("V1", sec1[0].get("S1aK1"));
+        assertEquals("V2", sec1[1].get("S1bK1"));
+        assertEquals("V3", sec1[2].get("S1cK1"));
     }
     
     @Test
@@ -460,7 +460,6 @@ public final class INIReaderTest {
                 "Key 2 = Val 2 \\\n" +
                 "Key 3 = Val 3\n" +
                 "Key 4 = Val 4\n");
-        System.out.println(ini);
         assertEquals(3, ini.values().size());
         assertEquals("Val 0", ini.get("Key 0"));
         assertEquals("Val 1 Key 2 = Val 2  Key 3 = Val 3", ini.get("Key 1"));
@@ -470,7 +469,6 @@ public final class INIReaderTest {
     @Test
     public void testEscaped() throws Exception {
         var ini = new INIReader.Builder().build().read("Key 0 = \\\\Abc\\a1\\b2\\t4\\nY\\r\\;Hello\\=Argh!\\W\\0");
-        System.out.println(ini);
         assertEquals(1, ini.values().size());
         assertEquals("\\\\Abc\\a1\\b2\\t4\\nY\\r\\", ini.get("Key 0"));
     }
@@ -478,7 +476,6 @@ public final class INIReaderTest {
     @Test
     public void testQuotedEscaped() throws Exception {
         var ini = new INIReader.Builder().build().read("Key 0 = \"\\\\Abc\\a1\\b2\\t4\\nY\\r\\;Hello\\=Argh!\\W\\0\"");
-        System.out.println(ini);
         assertEquals(1, ini.values().size());
         assertEquals("\\Abc" + (char)7 + "1" + (char)8 + "2" + (char)11 + "4\nY\r;Hello=Argh!\\W", ini.get("Key 0"));
     }
@@ -490,7 +487,6 @@ public final class INIReaderTest {
                 "Key 2 = Val 2 \\\n" +
                 "Key 3 = Val 3\n" +
                 "Key 4 = Val 4\n");
-        System.out.println(ini);
         assertEquals(5, ini.values().size());
         assertEquals("Val 0", ini.get("Key 0"));
         assertEquals("Val 1\\", ini.get("Key 1"));
@@ -498,6 +494,25 @@ public final class INIReaderTest {
         assertEquals("Val 3", ini.get("Key 3"));
         assertEquals("Val 4", ini.get("Key 4"));
     }
+    
+    @Test
+    public void testMultilineStrings() throws Exception {
+        var ini = new INIReader.Builder().build().read("Key 0 = Val 0\n" +
+                "Key 1 = '''\n" + 
+                "    Line 1 of multi-line string\n" + 
+                "    Line 2 of multi-line string\n" + 
+                "    Line 3 of multi-line string\n" + 
+                "    Line 4 of multi-line string\n" +
+                "    '''\n" +
+                "Key 2 = Val 2\n");
+        assertEquals(3, ini.values().size());
+        assertEquals("Val 0", ini.get("Key 0"));
+        assertEquals("Line 1 of multi-line string\n" + 
+	                "Line 2 of multi-line string\n" + 
+	                "Line 3 of multi-line string\n" + 
+	                "Line 4 of multi-line string", ini.get("Key 1"));
+        assertEquals("Val 2", ini.get("Key 2"));
+    }    
 
    
 }

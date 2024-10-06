@@ -190,10 +190,6 @@ public final class INIDeserializer extends AbstractSerDeser {
 
 	private <T> void setObjects(Data data, T object, MemberInfo f) {
 		var k = f.resolveKey();
-		System.out.println("setObjects " + k);
-		if(k.equals("items")) {
-			System.out.println("brk!");
-		}
 		if(f.isMap()) {
 			throw new UnsupportedOperationException();
 		}
@@ -210,10 +206,6 @@ public final class INIDeserializer extends AbstractSerDeser {
 
 	private <T> void setPrimitivesOrGrouping(Data data, T object, MemberInfo f) {
 		var k = f.resolveKey();
-		System.out.println("setPOG " + k);
-		if(k.equals("items")) {
-			System.out.println("brk!");
-		}
 		if(f.isMap()) {
 			
 			@SuppressWarnings("unchecked")

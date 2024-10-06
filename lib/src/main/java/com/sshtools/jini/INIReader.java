@@ -517,8 +517,18 @@ public final class INIReader extends AbstractIO {
         var lineNo = 0;
         var lastAppendedLine = -1;
         var ini = new DefaultINI(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, globalProperties, rootSections, interpolator, variablePattern, missingVariableMode);
-
+        var matched = new StringBuilder();
+        var multiline = false;
+        String readAhead = null;
+        String key = null;
+        var buf = new StringBuilder();
+        
         while ((line = lineReader.readLine()) != null) {
+        	if(!multiline) {
+        		buf.setLength(0);
+        		key = null;
+        	}
+        	
             offset += line.length();
 
             if (continuation) {
@@ -527,7 +537,7 @@ public final class INIReader extends AbstractIO {
                 continuation = false;
             }
 
-            if (lineContinuations && isLineContinuation(line)) {
+            if (!multiline && lineContinuations && isLineContinuation(line)) {
                 line = line.substring(0, line.length() - 1);
                 lineBuffer.append(line);
                 continuation = true;
@@ -542,19 +552,28 @@ public final class INIReader extends AbstractIO {
             lineBuffer.setLength(0);
             var lineWithoutLeading = fullLine.stripLeading();
 
-            if (lineWithoutLeading.length() == 0 || ( comments &&  lineWithoutLeading.charAt(0) == commentCharacter)) {
-                continue;
+            if (!multiline && (lineWithoutLeading.length() == 0 || ( comments &&  lineWithoutLeading.charAt(0) == commentCharacter))) {
+            	continue;
             }
 
             var lineChars = lineWithoutLeading.toCharArray();
             var escape = false;
-            var buf = new StringBuilder();
-            String key = null;
             char quoted = '\0';
-            var column = 0;            
+            var column = 0; 
+            var skipToNext = false;
+            var bufSizeAtStartOfLine = buf.length();
+            
             while(column < lineChars.length) {
 	            for (; column < lineChars.length; column++) {
-	                var ch = lineChars[column];
+	            	char ch;
+	            	if(readAhead != null) {
+	            		column--;
+	            		ch = readAhead.charAt(0);
+	            		readAhead = readAhead.substring(1);
+	            	}
+	            	else {
+	            		ch = lineChars[column];
+	            	}
 	                if (escape) {
 	                    switch (ch) {
 	                    case '\\':
@@ -594,42 +613,103 @@ public final class INIReader extends AbstractIO {
 	                    }
 	                    escape = false;
 	                } else {
-	                    if (ch == '\\' && (escapeMode == EscapeMode.ALWAYS || (escapeMode == EscapeMode.QUOTED && quoted != '\0'))) {
-	                        escape = true;
-	                    } else {
-	                        if (quoted != '\0') {
-	                            if (quoted == ch) {
-	                                quoted = '\0';
-	                                continue;
-	                            } else
-	                                buf.append(ch);
-	                        } else {
-	                            if (isQuote(ch)) {
-	                                quoted = ch;
-	                            } else if (ch == commentCharacter && comments && inlineComments) {
-                            		column = line.length();
-	                                break;
-	                            } else if (key == null) {
-	                                if (ch == valueSeparator) {
-	                                    key = unescapeJavaString(buf.toString());
-	                                    buf.setLength(0);
-	                                }
-	//								else if(ch == ' ' || ch == '\t') {
-	//									continue;
-	//								}
-	                                else
-	                                    buf.append(ch);
-	                            } else {
-	                            	if(ch == multiValueSeparator && multiValueMode == MultiValueMode.SEPARATED) {
-	                            		column++;
-	                            		break;
-	                            	}
-	                                buf.append(ch);
-	                            }
-	                        }
-	                    }
+	                	try {
+		                    if (ch == '\\' && (escapeMode == EscapeMode.ALWAYS || (escapeMode == EscapeMode.QUOTED && quoted != '\0'))) {
+		                        escape = true;
+		                    } else {
+		                        if (quoted != '\0') {
+		                            if (quoted == ch) {
+		                                quoted = '\0';
+		                                continue;
+		                            } else
+		                                buf.append(ch);
+		                        } else {
+		                        	if(multilineStrings && readAhead == null) {
+		                        	   if(isQuote(ch)) {
+		                        		   matched.append(ch);
+		                        		   if(matched.length() == INI.MULTI_QUOTE_MATCHES) {
+		                        			   /* Have multi-line string pattern. Ignore the remainder of the line */
+		                        			   matched.setLength(0);
+		                        			   
+		                        			   if(multiline) {
+		                        				   /* End multi-line doesn't end the row, as it may being used for a multi-line key */
+		                        				   multiline = false;
+		                        				   continue;
+		                        			   }
+		                        			   else {
+		                        				   /* Starting multi-line always starts on next row */
+			                        			   multiline = true;
+			                        			   column = line.length();
+			                        			   skipToNext = true;
+		                        			   }
+		                        			   break;
+		                        		   }
+		                        		   else {
+		                        			   /* Don't yet have full multi-line, read the next 
+		                        			    * character
+		                        			    */
+		                        			   continue;
+		                        		   }
+		                        	   }
+		                        	   else {
+		                        		   if(matched.length() == 0) {
+		                        			   /* Nothing matched, continue as normal */
+		                        		   }
+		                        		   else {
+		                        			   /* Matched < full pattern, feed back the characters
+		                        			    * that did match
+		                        			    */
+			                        		   matched.append(ch);
+		                        			   readAhead = matched.toString();
+		                        			   matched.setLength(0);
+		                        			   continue;
+		                        		   }
+		                        	   }
+		                        	}
+		                        		
+		                        	if(multiline) {
+		                        		if(buf.length() == bufSizeAtStartOfLine && buf.length() > 0) {
+		                        			buf.append(lineSeparator);
+		                        		}
+		                                buf.append(ch);
+		                        	}
+		                        	else if (isQuote(ch)) {
+		                                quoted = ch;
+		                            } else if (ch == commentCharacter && comments && inlineComments) {
+	                            		column = line.length();
+		                                break;
+		                            } else if (key == null) {
+		                                if (ch == valueSeparator) {
+		                                    key = unescapeJavaString(buf.toString());
+		                                    buf.setLength(0);
+		                                }
+		//								else if(ch == ' ' || ch == '\t') {
+		//									continue;
+		//								}
+		                                else
+		                                    buf.append(ch);
+		                            } else {
+		                            	if(ch == multiValueSeparator && multiValueMode == MultiValueMode.SEPARATED) {
+		                            		column++;
+		                            		break;
+		                            	}
+		                                buf.append(ch);
+		                            }
+		                        }
+		                    }
+		                    
+	                	} finally {
+                 		   if("".equals(readAhead)) {
+                 			   /* Finished reading from read ahead */
+                 			   readAhead = null;
+                 		   }
+	                	}
 	                }
 	            }
+	            
+	            if(skipToNext)
+	            	break;
+	            
 	            if (key == null) {
 	                key = buf.toString();
 	                buf.setLength(0);
@@ -716,7 +796,7 @@ public final class INIReader extends AbstractIO {
 	                        lastSection = section = (SectionImpl)sectionsForKey[sectionsForKey.length - 1];
 	                    }
 	                }
-	            } else {
+	            } else if(!multiline) {
 	                var val = buf.toString();
 	                buf.setLength(0);
 	                if (val.isEmpty() && !emptyValues) {

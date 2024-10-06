@@ -64,6 +64,8 @@ import com.sshtools.jini.Interpolation.Interpolator;
  * 
  */
 public interface INI extends Data {
+
+	public static final int MULTI_QUOTE_MATCHES = 3;
 	
 	/**
 	 * Missing variable mode 
@@ -121,6 +123,31 @@ public interface INI extends Data {
 	 */
 	static INI blank() {
 		return EmptyContainer.empty;
+	}
+	
+	static String createMultilineQuote(char quote) {
+		var b = new StringBuilder(MULTI_QUOTE_MATCHES);
+		for(int i = 0 ; i < MULTI_QUOTE_MATCHES; i++) {
+			b.append(quote);
+		}
+		return b.toString();
+	}
+	
+	static String escapeLineSeparators(String lineSeparators) {
+		var b =new StringBuilder(2);
+		for(var ch : lineSeparators.toCharArray()) {
+			switch(ch) {
+			case '\r':
+				b.append("\\r");
+				break;
+			case '\n':
+				b.append("\\n");
+				break;
+			default:
+				b.append(ch);
+			}
+		}
+		return b.toString();
 	}
     
 	/**
@@ -450,6 +477,8 @@ public interface INI extends Data {
         protected final char multiValueSeparator;
         protected final boolean emptyValues;
         protected final EscapeMode escapeMode;
+        protected final boolean multilineStrings;
+        protected final String lineSeparator ;
 
         AbstractIO(AbstractIOBuilder<?> builder) {
             this.sectionPathSeparator = builder.sectionPathSeparator;
@@ -462,12 +491,16 @@ public interface INI extends Data {
             this.multiValueSeparator = builder.multiValueSeparator;
             this.emptyValues = builder.emptyValues;
             this.escapeMode = builder.escapeMode;
+            this.multilineStrings = builder.multilineStrings;
+            this.lineSeparator = builder.lineSeparator;
         }
     }
 
     static abstract class AbstractIOBuilder<B extends AbstractIOBuilder<B>> {
 
         char sectionPathSeparator = '.';
+        boolean multilineStrings = true;
+        String lineSeparator = System.lineSeparator();
         boolean lineContinuations = true;
         boolean valueSeparatorWhitespace = true;
         char valueSeparator = '=';
@@ -477,6 +510,34 @@ public interface INI extends Data {
         char multiValueSeparator = ',';
         boolean emptyValues = true;
         EscapeMode escapeMode = EscapeMode.QUOTED;
+        
+        /**
+         * Turn of reading and writing of mulitline strings. 
+         * 
+         * @return this for chaining
+         */
+        @SuppressWarnings("unchecked")
+		public B withoutMultilineStrings() {
+        	this.multilineStrings = false;
+        	return (B)this;
+        }
+        
+		/**
+		 * The line separator sequence to use between each line of content in a multi-line
+		 * string.
+		 * 
+		 * @param lineSeperator line separator
+         * @return this for chaining
+		 */
+		@SuppressWarnings("unchecked")
+		public B withtLineSeparator(String lineSeperator) {
+        	this.lineSeparator = lineSeperator;
+        	return (B)this;
+        }
+        
+        /**
+         * Set the sequence to use 
+         */
 
         /**
          * Configure how the write behaves when writing special characters in strings 

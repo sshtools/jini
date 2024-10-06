@@ -223,7 +223,7 @@ public class INIWriter extends AbstractIO {
         }
     }
 
-    public String quote(int depth, String value) {
+    private String quote(int depth, String value) {
         switch (stringQuoteMode) {
         case NEVER:
             return escape(value, false);
@@ -238,10 +238,25 @@ public class INIWriter extends AbstractIO {
                 return value;
             break;
         }
-        return quoteCharacter + lineContinuations(depth, escape(value, true)) + quoteCharacter;
+        if(multilineStrings && isMultilineString(value)) {
+        	return INI.createMultilineQuote(quoteCharacter) + 
+        			lineSeparator + 
+        			multiline(depth + 1, value) +
+        			lineSeparator +  
+        			indentToDepth(depth + 1) +
+        			INI.createMultilineQuote(quoteCharacter);
+        }
+        else {
+        	return quoteCharacter + lineContinuations(depth, escape(value, true)) + quoteCharacter;
+        }
+    } 
+    
+    private boolean isMultilineString(String str) {
+    	var idx = str.indexOf(lineSeparator);
+    	return idx > -1 && idx != str.length() - lineSeparator.length(); 
     }
 
-    public String[] quote(int depth, String[] values) {
+    private String[] quote(int depth, String[] values) {
     	var newVals = new String[values.length];
         for (int i = 0; i < values.length; i++) {
             newVals[i] = quote(depth, values[i]);
@@ -249,16 +264,42 @@ public class INIWriter extends AbstractIO {
         return newVals;
     }
     
+    private String multiline(int depth, String value) {
+    	var els = INI.escapeLineSeparators(lineSeparator);
+		var lines = value.split(els);
+		var buf = new StringBuilder();
+		for(int i = 0 ; i < lines.length; i++) {
+			if(i > 0) {
+				buf.append(lineSeparator);
+			}
+			indentToDepth(depth, buf);
+			buf.append(escape(lines[i], true));
+		}
+		return buf.toString();
+    }
+    
+    private String indentToDepth(int depth) {
+    	var sb = new StringBuilder();
+    	indentToDepth(depth, sb);
+    	return sb.toString();
+    }
+
+    private void indentToDepth(int depth, StringBuilder buf) {
+		for(int j = 0 ; j < Math.min(2,  depth * 4); j++) {
+			buf.append(' ');
+		}
+	}
+    
     private String lineContinuations(int depth, String value) {
-    	var lines = value.split("\\\\n");
+    	var lines = value.split(INI.escapeLineSeparators(lineSeparator));
     	if(lines.length > 1) {
-    		var buf = new StringBuffer();
+    		var buf = new StringBuilder();
     		for(int i = 0 ; i < lines.length; i++) {
     			if(i > 0) {
-    				buf.append("\\n\\\n");
-    				for(int j = 0 ; j < Math.min(2,  depth * 4); j++) {
-    					buf.append(' ');
-    				}
+    				buf.append(INI.escapeLineSeparators(lineSeparator));
+    				buf.append("\\");
+    				buf.append(lineSeparator);
+    				indentToDepth(depth, buf);
     			}
     			buf.append(lines[i]);
     		}
