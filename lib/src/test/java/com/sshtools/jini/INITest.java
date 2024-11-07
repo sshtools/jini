@@ -228,6 +228,22 @@ public class INITest {
         });
     }
 
+
+    @Test
+    public void testCreateMultipleSameNamedSectrions() throws IOException, ParseException {
+        var ini = INI.create();
+        var sec1a = ini.create("Section1");
+        sec1a.put("Key1", "Val1");
+        var sec1b = ini.create("Section1");
+        sec1b.put("Key2", "Val2");
+        sec1b.put("Key3", "Val3");
+        assertEquals(1, ini.sections().size());
+        Section[] secs = ini.sections().values().iterator().next();
+		assertEquals(2, secs.length);
+		assertEquals(1, secs[0].keys().size());
+		assertEquals(2, secs[1].keys().size());
+    }
+
     @Test
     public void testCreateAndDeleteSections() throws IOException, ParseException {
         var ini = INI.create();

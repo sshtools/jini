@@ -4,12 +4,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -19,6 +15,7 @@ import com.sshtools.jini.serialization.INISerialization.INIField;
 import com.sshtools.jini.serialization.INISerialization.INIMethod;
 import com.sshtools.jini.serialization.INISerialization.INISerialized;
 import com.sshtools.jini.serialization.INISerialization.Inheritance;
+import com.sshtools.jini.serialization.INISerialization.MemberInfo;
 import com.sshtools.jini.serialization.INISerialization.MethodNamePattern;
 import com.sshtools.jini.serialization.INISerialization.MethodReflectionBehaviour;
 import com.sshtools.jini.serialization.INISerialization.Rule;
@@ -61,6 +58,11 @@ abstract class AbstractSerDeser {
 			this.behavior = behaviour;
 		}
 		
+		@Override
+		public Optional<String> resolveReference() {
+			return behavior.reference();
+		}
+
 		@Override
 		public Object get(Object obj) {
 			try {
@@ -106,34 +108,6 @@ abstract class AbstractSerDeser {
 		}
 	}
 	
-	interface MemberInfo {
-		Object get(Object obj);
-		
-		default boolean isCollection() {
-			return AbstractSerDeser.isCollection(type());
-		}
-		
-		default boolean isMap() {
-			return AbstractSerDeser.isMap(type());
-		}
-		
-		default boolean isPrimitiveOrGrouping() {
-			return AbstractSerDeser.isPrimitiveOrGrouping(type());
-		}
-		
-		default boolean isObject() {
-			return !isPrimitiveOrGrouping();
-		}
-		
-		Class<?> itemType();
-		
-		String resolveKey();
-		
-		void set(Object obj, Object val);
-		
-		Class<?> type();
-	}
-	
 	class MethodInfo implements MemberInfo {
 		private Method method;
 		MethodReflectionBehaviour behavior;
@@ -145,6 +119,11 @@ abstract class AbstractSerDeser {
 			this.typeBehavior = typeBehavior;
 		}
 		
+		@Override
+		public Optional<String> resolveReference() {
+			return behavior.reference();
+		}
+
 		@Override
 		public Object get(Object obj) {
 			try {
@@ -222,47 +201,6 @@ abstract class AbstractSerDeser {
 			}
 			return pattern;
 		}
-	}
-	
-	static boolean isData(Class<?> type) {
-		return ( type.isArray() && type.getComponentType().equals(byte.class) ) ||
-				ByteBuffer.class.isAssignableFrom(type);
-	}
-
-	static boolean isPrimitiveOrGrouping(Class<?> type) {
-		return isPrimitive(type) || 
-				   isCollection(type) ||
-				   isMap(type);
-	}
-	
-	static boolean isPrimitive(Class<?> type) {
-		return type.isPrimitive() ||
-			   type.isEnum() ||
-			   Number.class.isAssignableFrom(type) ||
-			   type.equals(Boolean.class) ||
-			   type.equals(Character.class) ||
-			   type.equals(BigInteger.class) ||
-			   type.equals(String.class) ||
-			   isData(type);
-	}
-	
-	static <T> T construct(Class<T> type) {
-		try {
-			return (T)type.getConstructor().newInstance();
-		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-				| NoSuchMethodException | SecurityException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
-	
-	private static boolean isCollection(Class<?> type) {
-		return ( type.isArray() ||
-				Collection.class.isAssignableFrom(type) ) && !isData(type);
-	}
-	
-
-	private static boolean isMap(Class<?> type) {
-		return Map.class.isAssignableFrom(type);
 	}
 	
 	protected final Optional<TypeReflectionBehaviour> reflectionBehaviour;
@@ -379,6 +317,12 @@ abstract class AbstractSerDeser {
 				public Rule rule() {
 					return annot.rule();
 				}
+
+				@Override
+				public Optional<String> reference() {
+					var ref = annot.reference(); 
+					return ref.equals("") ? Optional.empty() : Optional.of(ref);
+				}
 				
 			};
 		}
@@ -431,6 +375,12 @@ abstract class AbstractSerDeser {
 				@Override
 				public Rule rule() {
 					return annot.rule();
+				}
+
+				@Override
+				public Optional<String> reference() {
+					var ref = annot.reference(); 
+					return ref.equals("") ? Optional.empty() : Optional.of(ref);
 				}
 
 			};

@@ -4,7 +4,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.InvocationTargetException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Defines annotations, enums and interfaces used to provide object serialization to and from 
@@ -139,6 +144,17 @@ public interface INISerialization {
 		 * @return item type
 		 */
 		Class<?> itemType() default Void.class;
+		
+		/**
+		 * Set a reference if this should serialize an object reference instead
+		 * of the object itself, or if it should de-serialize from an object reference
+		 * instead of INI data. 
+		 * <p>
+		 * A blank string indicates to serialize the object itself.
+		 * 
+		 * @return reference reference
+		 */
+		String reference() default "";
 	}
 	
 	/**
@@ -177,6 +193,17 @@ public interface INISerialization {
 		 * @return item type
 		 */
 		Class<?> itemType() default Void.class;
+		
+		/**
+		 * Set a reference if this should serialize an object reference instead
+		 * of the object itself, or if it should de-serialize from an object reference
+		 * instead of INI data. 
+		 * <p>
+		 * A blank string indicates to serialize the object itself.
+		 * 
+		 * @return reference reference
+		 */
+		String reference() default "";
 	}
 	
 	//
@@ -209,6 +236,11 @@ public interface INISerialization {
 				public Class<?> itemType() {
 					return Void.class;
 				}
+
+				@Override
+				public Optional<String> reference() {
+					return Optional.empty();
+				}
 				
 			};
 		}
@@ -235,6 +267,13 @@ public interface INISerialization {
 		 * @return item type
 		 */
 		Class<?> itemType();
+		
+		/**
+		 * Resolve a reference that should be used during serialization or de-serialization.
+		 * 
+		 * @return reference reference
+		 */
+		Optional<String> reference();
 	
 		static FieldReflectionBehaviour defaultBehaviour() {
 			return FieldReflectionBehaviour.Defaults.DEFAULT;
@@ -272,6 +311,11 @@ public interface INISerialization {
 				public Class<?> itemType() {
 					return Void.class;
 				}
+
+				@Override
+				public Optional<String> reference() {
+					return Optional.empty();
+				}
 				
 			};
 		}
@@ -305,6 +349,13 @@ public interface INISerialization {
 		 * @return item type
 		 */
 		Class<?> itemType();
+		
+		/**
+		 * Resolve a reference that should be used during serialization or de-serialization.
+		 * 
+		 * @return reference reference
+		 */
+		Optional<String> reference();
 		
 		static MethodReflectionBehaviour defaultBehaviour() {
 			return MethodReflectionBehaviour.Defaults.DEFAULT;
@@ -386,5 +437,78 @@ public interface INISerialization {
 		static TypeReflectionBehaviour defaultBehaviour() {
 			return TypeReflectionBehaviour.Defaults.DEFAULT;
 		}
+	}
+	
+	interface MemberInfo {
+		Object get(Object obj);
+		
+		default boolean isCollection() {
+			return INISerialization.isCollection(type());
+		}
+		
+		default boolean isMap() {
+			return INISerialization.isMap(type());
+		}
+		
+		default boolean isPrimitiveOrGrouping() {
+			return INISerialization.isPrimitiveOrGrouping(type());
+		}
+		
+		default boolean isObject() {
+			return !isPrimitiveOrGrouping();
+		}
+		
+		Class<?> itemType();
+		
+		String resolveKey();
+		
+		Optional<String> resolveReference();
+		
+		void set(Object obj, Object val);
+		
+		Class<?> type();
+	}
+	
+
+	
+	static boolean isData(Class<?> type) {
+		return ( type.isArray() && type.getComponentType().equals(byte.class) ) ||
+				ByteBuffer.class.isAssignableFrom(type);
+	}
+
+	static boolean isPrimitiveOrGrouping(Class<?> type) {
+		return isPrimitive(type) || 
+				   isCollection(type) ||
+				   isMap(type);
+	}
+	
+	static boolean isPrimitive(Class<?> type) {
+		return type.isPrimitive() ||
+			   type.isEnum() ||
+			   Number.class.isAssignableFrom(type) ||
+			   type.equals(Boolean.class) ||
+			   type.equals(Character.class) ||
+			   type.equals(BigInteger.class) ||
+			   type.equals(String.class) ||
+			   isData(type);
+	}
+	
+	static <T> T construct(Class<T> type) {
+		try {
+			return (T)type.getConstructor().newInstance();
+		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+				| NoSuchMethodException | SecurityException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+	
+	static boolean isCollection(Class<?> type) {
+		return ( type.isArray() ||
+				Collection.class.isAssignableFrom(type) ) && !isData(type);
+	}
+	
+
+	static boolean isMap(Class<?> type) {
+		return Map.class.isAssignableFrom(type);
 	}
 }

@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import com.sshtools.jini.Data;
 import com.sshtools.jini.INI;
 import com.sshtools.jini.INIReader;
+import com.sshtools.jini.serialization.INISerialization.MemberInfo;
 import com.sshtools.jini.serialization.INISerialization.TypeReflectionBehaviour;
 
 /**
@@ -147,7 +148,7 @@ public final class INIDeserializer extends AbstractSerDeser {
 	}
 	
 	private <T> T constructOrNull(Data data, Class<T> type) {
-		return isNull(data) ? null : construct(type);
+		return isNull(data) ? null : INISerialization.construct(type);
 	}
 	
 	private boolean isNull(Data data) {
@@ -242,7 +243,7 @@ public final class INIDeserializer extends AbstractSerDeser {
 		}
 		else {
 			if(f.isCollection()) {
-				if(isPrimitive(f.itemType())) {
+				if(INISerialization.isPrimitive(f.itemType())) {
 					/* Collection of primitives */
 					if(data.contains(k)) {
 						f.set(object, parseStrings(object, data.getAll(k), f));
@@ -331,7 +332,7 @@ public final class INIDeserializer extends AbstractSerDeser {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private Object parseString(String str, Class<?> type) {
-		if(isData(type)) {
+		if(INISerialization.isData(type)) {
 			var data = Base64.getDecoder().decode(str);
 			if(type.equals(ByteBuffer.class)) {
 				return ByteBuffer.wrap(data);

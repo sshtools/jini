@@ -13,12 +13,15 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.sshtools.jini.Data;
 import com.sshtools.jini.INI;
 import com.sshtools.jini.INIWriter;
+import com.sshtools.jini.serialization.INISerialization.MemberInfo;
 import com.sshtools.jini.serialization.INISerialization.TypeReflectionBehaviour;
 
 /**
@@ -27,7 +30,17 @@ import com.sshtools.jini.serialization.INISerialization.TypeReflectionBehaviour;
  */
 public final class INISerializer extends AbstractSerDeser {
 	
-	public static final String INSTRUCTION_KEY = "_" +INISerializer.class.getName();
+	/**
+	 * Implementations generate a string reference key given all
+	 * the known information about an object value.
+	 * <p>
+	 * If default behaviour is required (i.e. fully serialize the object), then
+	 * a {@link Optional#empty()} should be returned.
+	 */
+	public interface ReferenceResolver extends Function<MemberInfo, Optional<String>> {
+	}
+	
+	public static final String INSTRUCTION_KEY = "__instruction";
 	public static final String NULL = "NULL";
 
 	/**
@@ -90,6 +103,20 @@ public final class INISerializer extends AbstractSerDeser {
 	 */
 	public final static class Builder extends AbstractBuilder<INISerializer, Builder> {
 		
+		private Optional<ReferenceResolver> referenceResolver = Optional.empty();
+		
+		/**
+		 * Use a {@link ReferenceResolver} to generate a string reference given everything
+		 * known about an object value to be serialized.
+		 * <p>
+		 * If a reference should not be generated, the {@link Optional#empty} should be returned
+		 * indicating the object should be fully serialized.
+		 */
+		public Builder withReferenceResolver(ReferenceResolver referenceResolver) {
+			this.referenceResolver = Optional.of(referenceResolver);
+			return this;
+		}
+		
 		/**
 		 * Build
 		 */
@@ -107,8 +134,11 @@ public final class INISerializer extends AbstractSerDeser {
 		return super.isInclude(trb, method);
 	}
 
+	private final Optional<ReferenceResolver> referenceResolver;
+
 	private INISerializer(Builder builder) {
 		super(builder);
+		this.referenceResolver = builder.referenceResolver;
 	}
 	
 	/**
@@ -190,7 +220,7 @@ public final class INISerializer extends AbstractSerDeser {
 			}
 			else if(f.isCollection()) {
 				var itype = f.itemType();
-				if(isPrimitive(itype)) {
+				if(INISerialization.isPrimitive(itype)) {
 					data.putAll(f.resolveKey(), expand(val).map(this::toString).collect(Collectors.toList()).toArray(new String[0]));
 				}
 				else { 
@@ -223,7 +253,7 @@ public final class INISerializer extends AbstractSerDeser {
 		if(obj == null)
 			return null;
 		else {
-			if(isData(obj.getClass())) {
+			if(INISerialization.isData(obj.getClass())) {
 				byte[] data;
 				if(obj instanceof ByteBuffer) {
 					var bb = (ByteBuffer)obj;
