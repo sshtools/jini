@@ -74,6 +74,61 @@ public class INISchema {
 		}
 
 	}
+	
+	public final static class Arity {
+		
+		public static final Arity NO_MORE_THAN_ONE = new Arity(0, 1);
+		public static final Arity ONE = new Arity(1, 1);
+		public static final Arity AT_LEAST_ONE = new Arity(1, Integer.MAX_VALUE);
+		public static final Arity ANY = new Arity(0, Integer.MAX_VALUE);
+		
+		private final int min;
+		private final int max;
+		
+		public static Arity parse(String str) {
+			var els = str.split("\\.\\.");
+			
+			if(els.length == 1) {
+				if(els[0].equals("ANY")) 
+					return ANY;
+				else if(els[0].equals("ONE")) 
+					return ONE;
+				else if(els[0].equals("NO_MORE_THAN_ONE")) 
+					return NO_MORE_THAN_ONE;
+				else if(els[0].equals("AT_LEAST_ONE")) 
+					return NO_MORE_THAN_ONE;
+			}
+			
+			var v = els[0].equals("") ? 0 : Integer.parseInt(els[0]);
+			if(els.length == 1) {
+				return new Arity(v, v);
+			}
+			else if(els.length == 2) {
+				var v2 = els[1].equals("") ? Integer.MAX_VALUE : Integer.parseInt(els[1]);
+				return new Arity(v, v2);
+			}
+			else
+				throw new IllegalArgumentException("Invalid format for arity. [<min>]..[<max>]");
+		}
+		
+		private Arity(int min, int max) {
+			super();
+			this.min = min;
+			this.max = max;
+		}
+		
+		public int min() {
+			return min;
+		}
+		
+		public int max() {
+			return max;
+		}
+		
+		public boolean validate(int items) {
+			return items >= min && items <= max;
+		}
+	}
 
 	public final static class SectionDescriptor {
 		private final String key;
@@ -82,9 +137,11 @@ public class INISchema {
 		private final String[] path;
 		private final List<KeyDescriptor> keys;
 		private final List<SectionDescriptor> sections;
+		private final Arity arity;
 
 		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
 				List<SectionDescriptor> sections,
+				Optional<Arity> arity,
 				String... path) {
 			super();
 			this.key = key;
@@ -93,6 +150,11 @@ public class INISchema {
 			this.description = description;
 			this.keys = keys;
 			this.sections = sections;
+			this.arity = arity.orElse(Arity.ONE);
+		}
+		
+		public Arity artity() {
+			return arity;
 		}
 
 		public String name() {
@@ -132,9 +194,10 @@ public class INISchema {
 		private final Optional<String[]> values;
 		private final String[] defaultValues;
 		private final Optional<Discriminator> discriminator;
+		private final Arity arity;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
-				Optional<String> description, Optional<Discriminator> discriminator) {
+				Optional<String> description, Optional<Discriminator> discriminator, Optional<Arity> arity) {
 			super();
 			if(type.equals(Type.SECTION)) {
 				throw new IllegalArgumentException("Key may not be of type " + Type.SECTION);
@@ -146,6 +209,13 @@ public class INISchema {
 			this.values = values;
 			this.defaultValues = defaultValue;
 			this.description = description;
+			this.arity = arity.orElseGet(() ->
+				defaultValues.length == 0 ? Arity.ONE : Arity.NO_MORE_THAN_ONE
+			);
+		}
+		
+		public Arity arity() {
+			return arity;
 		}
 
 		public String description() {
@@ -281,7 +351,8 @@ public class INISchema {
 					sec.getAllOr("value"),
 					sec.getAllElse("default-value"),
 					sec.getOr("description"),
-					discriminatorForSection(type, sec));
+					discriminatorForSection(type, sec),
+					sec.getOr("arity").map(Arity::parse));
 			});
 	}
 
@@ -311,6 +382,7 @@ public class INISchema {
 						map(k -> { 
 							return sectionDescriptor(k[0]); 
 						}).collect(Collectors.toList()),
+				section.getOr("arity").map(Arity::parse),
 				section.path()
 		);
 	}
@@ -356,10 +428,19 @@ public class INISchema {
 
 		@Override
 		public Optional<Section[]> allSectionsOr(String... path) {
-			Section[] allSections = super.allSectionsOr(path).orElse(new Section[0]);
-			var mgr = new LinkedHashMap<String, Section[]>(Arrays.asList(allSections).stream().collect(Collectors.toMap(Section::key, (s) -> {
-				return new Section[] { s };
-			})));
+			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
+			var mgr = new LinkedHashMap<String, Section[]>();
+			for(var sec : allSections) {
+				var arr = mgr.get(sec.key());
+				if(arr == null)
+					mgr.put(sec.key(), new Section[] { sec });
+				else {
+					var narr = new Section[arr.length + 1];
+					System.arraycopy(arr, 0, narr, 0, arr.length);
+					narr[arr.length] = sec;
+					mgr.put(sec.key(), narr);
+				} 
+			}
 			addSchemaSections(mgr, path);
 			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
 			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
