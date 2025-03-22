@@ -21,10 +21,17 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * Configurable case sensitivity.
  * Configurable order preservation.
  * JPMS compliant.
- * Requires JDK 11 or above (JDK 17 for tests).
- * Optional [Preferences](#preferences-backing-store) implementation.
  * String interpolation with configurable variable pattern.
- * Optional reflection based serialization and deserialization of objects.
+ * Requires JDK 11 or above (JDK 17 for tests).
+ 
+## Optional Modules
+
+ * [Preferences](#preferences-backing-store) implementation.
+ * [Object Serialization and De-serialization](#object-serialization-and-deserialization) using reflection or plain Java.
+ * Use a [Schema](#schema) to describe your document and ensure it always contains valid data.
+ * A generic [Configuration](#configuration) API with change monitoring. Similar to the prefences API, but using the native API with support for schemas.
+ 
+ Reflection based serialization and deserialization of objects.
  
 ## WIP
 
@@ -290,6 +297,8 @@ De-serialization imposes some additional requirements and restrictions too.
  * New `jini-serialization` module for object serialization and deserialization. See `INISerializer` and `INIDeserializer`.
  * `duplicateSectionAction` default is now `DuplicateAction.APPEND`. This means multiple sections with the same name by default will now all be available.
  * Multi-line string support for keys and values. Wrap strings in supported quote character, e.g `''' ..... '''` in a manner similar to Java. 
+ * Arity support in schema.
+ * Minor bug fixes.
 
 ### 0.3.3
 
