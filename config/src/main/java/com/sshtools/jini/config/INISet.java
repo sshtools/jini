@@ -70,7 +70,7 @@ public final class INISet implements Closeable {
 	private abstract static class AbstractWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SectionWrapper> {
 
 		public AbstractWrapper(DEL delegate, AbstractWrapper<?> parent, INISet set) {
-			super(delegate, parent, set);
+			super(delegate, parent, set); 
 		}
 
 		@Override
@@ -165,8 +165,15 @@ public final class INISet implements Closeable {
 				} else {
 					var sec = (Section) delegate;
 					var thisSectionPath = sec.path();
-					var wtrblSec = wtrblDoc.obtainSection(thisSectionPath);
-					task.accept(wtrblSec);
+					
+					if(sec.parentOr().isPresent()) {
+						int index = sec.index();
+						Section allSec = wtrblDoc.allSections(thisSectionPath)[index];
+						task.accept(allSec);
+					}
+					else {
+						task.accept(wtrblDoc.obtainSection(thisSectionPath));
+					}
 				}
 				ref.write();
 			} catch (IOException ioe) {
@@ -202,6 +209,11 @@ public final class INISet implements Closeable {
 		@Override
 		public final String[] path() {
 			return delegate.path();
+		}
+
+		@Override
+		public int index() {
+			return delegate.index();
 		}
 
 		@Override

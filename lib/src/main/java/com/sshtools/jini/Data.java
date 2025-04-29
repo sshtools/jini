@@ -437,7 +437,7 @@ public interface Data {
         						case SKIP:
         							return null;
         						default:
-        							throw new IllegalArgumentException(MessageFormat.format("Unknown string variable ''{0}'''", var));
+        							throw new IllegalArgumentException(MessageFormat.format("Unknown string variable `{0}`'", var));
         						}
         					})
         				);

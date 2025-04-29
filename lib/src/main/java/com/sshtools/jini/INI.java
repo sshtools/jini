@@ -772,6 +772,15 @@ public interface INI extends Data {
 		 * @return parent
 		 */
 		Section parent();
+
+		/**
+		 * Get the index of this section, among others with the same {@link #key()} in
+		 * its parent {@link Section} or thrown an {@link IllegalArgumentException} if
+		 * this section is in the root document.
+		 * 
+		 * @return index
+		 */
+		int index();
     }
     
     final static class SectionImpl extends AbstractData implements Section {
@@ -814,6 +823,11 @@ public interface INI extends Data {
             }
             this.ini = ini;
         }
+
+		@Override
+        public int index() {
+			return Arrays.asList(parent().allSections(key())).indexOf(this);
+		}
 
         /**
          * A read-only facade to this section.
@@ -911,7 +925,7 @@ public interface INI extends Data {
             return parent.get() instanceof Section ? parent.map(d -> (Section) d) : Optional.empty();
         }
 
-        /**
+		/**
          * Get the key used for this section.
          * 
          * @return key

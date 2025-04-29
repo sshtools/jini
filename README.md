@@ -27,11 +27,9 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
 ## Optional Modules
 
  * [Preferences](#preferences-backing-store) implementation.
- * [Object Serialization and De-serialization](#object-serialization-and-deserialization) using reflection or plain Java.
- * Use a [Schema](#schema) to describe your document and ensure it always contains valid data.
+ * [Object Serialization and De-serialization](#object-serialization-and-de-serialization) using reflection or plain Java.
+ * Use a [Schema](#schemas) to describe your document and ensure it always contains valid data.
  * A generic [Configuration](#configuration) API with change monitoring. Similar to the prefences API, but using the native API with support for schemas.
- 
- Reflection based serialization and deserialization of objects.
  
 ## WIP
 
@@ -290,8 +288,68 @@ De-serialization imposes some additional requirements and restrictions too.
 
  * All types that have no special handling, must have empty public constructors.
  * For `Collection` and `Map` types, if you want it to be of a particular type of collection or map, you should make sure it is initialized in construction (i.e. an initialized field, or created in a default constructor). In this case it must be a modifiable. If the field is `null` when deserializing, and data for the collection is present, then an unmodifiable variant of the collections will be automatically created and filled.
+ 
+## Schemas
+
+Schemas allow you to specify rules as to the content allowed in a document including data types, sections and default values.
+
+### Writing A Schema
+
+A schema is itself just an INI document. 
+
+ * Each *Key* that you might use in a document, has a corresponding *Section* in the schema. 
+ * For each *Section* in the document, there will again be a corresponding *Section* in the schema.
+ * Each *Key* must have a `type` attribute in its schema section. 
+ * A schema section without a `type` key is treated as a *Section*.
+
+```
+[name]
+	name = Name
+	description = The users name. 
+	type = TEXT
+	
+[subscribed]
+	name = Subscribed
+	description = When true, will be sent notifications.
+	type = BOOLEAN
+	default-value = TRUE
+
+[favourite-number]
+	name = Favourite Number
+	description = The users favourite number.
+	type = NUMBER
+	default-value = 50
+
+[role]
+	name = Role
+	description = The users role.
+	type = ENUM
+	value = ADMINISTRATOR, STANDARD, GUEST
+	default-value = GUEST
+```
+
+### Creating The Facade
+
+You then wrap an existing `INI` instance with a schema, producing another `INI` instance that is guaranteed to conform to the schema. E.g. if no value for a particular key exists, its default value (if any) will be returned.
+
+```java
+var schema = INISchema.fromFile(Paths.get("data.schema.ini"));
+var ini = INI.fromFile(Paths.get("data.ini"));
+var wrapped = schema.facadeFor(wrapped);
+```
+
+There are a number of convenience methods, and a builder `INISchema.Builder` that may be used to create a schema. 
+
+## Configuration
+
+TODO
 
 ## Changes
+
+### 0.4.1
+
+ * Append a new section in an `INISet` would fail (the first section would be replaced).
+ * Added `Section.index()`, returning the index of the section in its parent.
 
 ### 0.4.0
  * New `jini-serialization` module for object serialization and deserialization. See `INISerializer` and `INIDeserializer`.

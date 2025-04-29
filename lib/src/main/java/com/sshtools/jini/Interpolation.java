@@ -18,7 +18,7 @@ public final class Interpolation {
 
 	public static Interpolator throwException()  {
 		return (data, k) -> {
-			throw new IllegalArgumentException(MessageFormat.format("Unknown string variable ''{0}'''", k));
+			throw new IllegalArgumentException(MessageFormat.format("Unknown string variable `{0}`'", k));
 		};
 	}
 	

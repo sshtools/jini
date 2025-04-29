@@ -272,10 +272,10 @@ public class INISchema {
 
 	/**
 	 * Returns a new {@link INI} document that is guaranteed to contain all sections
-	 * and values that the schem defines, and all values will be valid.
+	 * and values that the schema defines, and all values will be valid.
 	 * <p>
 	 * Any attempt to put any value that would be considered invalid by the schema
-	 * into the document.
+	 * into the document is rejected.
 	 *
 	 * @param document base document
 	 * @return validated document
@@ -538,6 +538,11 @@ public class INISchema {
 		@Override
 		public final String[] path() {
 			return delegate.path();
+		}
+
+		@Override
+		public int index() {
+			return delegate.index();
 		}
 
 		@Override
