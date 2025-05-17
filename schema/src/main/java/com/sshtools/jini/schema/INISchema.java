@@ -1,7 +1,14 @@
 package com.sshtools.jini.schema;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.UncheckedIOException;
+import java.io.Writer;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -10,42 +17,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.sshtools.jini.Data;
 import com.sshtools.jini.INI;
+import com.sshtools.jini.INIReader;
+import com.sshtools.jini.INIReader.DuplicateAction;
+import com.sshtools.jini.INIReader.MultiValueMode;
+import com.sshtools.jini.INIWriter;
 import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.WrappedINI;
 
 public class INISchema {
+	
+	public final static INIReader schemaReader() {
+		return new INIReader.Builder().
+				withDuplicateKeysAction(DuplicateAction.APPEND).
+				withMultiValueMode(MultiValueMode.REPEATED_KEY).
+				withDuplicateSectionAction(DuplicateAction.ABORT).
+				build();
+	}
+	
+	public final static INIWriter schemaWriter() {
+		return new INIWriter.Builder().
+				withMultiValueMode(MultiValueMode.REPEATED_KEY).
+				withSectionPathSeparator('\\').
+				build();
+	}
 
-	public enum Type {
-		SECTION, ENUM, BOOLEAN, TEXT, NUMBER, LIST;
-
-		public Discriminator discriminator(String discriminator) {
-			switch(this) {
-			case TEXT:
-				return TextDiscriminator.valueOf(discriminator);
-			case NUMBER:
-				return NumberDiscriminator.valueOf(discriminator);
-			default:
-				throw new UnsupportedOperationException("The type '" + name() + "' does not support the discriminator '" + discriminator + "'");
-			}
-		}
-	}
-	
-	public interface Discriminator {
-		
-	}
-	
-	public enum TextDiscriminator implements Discriminator {
-		LOCATION, COLOR, SECRET, PATH, IP, DIRECTORY, FILE
-	}
-	
-	public enum NumberDiscriminator implements Discriminator {
-		BIG, DOUBLE, FLOAT, INTEGER, LONG, BYTE, SHORT
-	}
+	private static final String SCHEMA_ITEM_ARITY = "arity";
+	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
+	public static final String SCHEMA_ITEM_NAME = "name";
 
 	public final static class Builder {
 		private INI ini;
@@ -57,11 +61,23 @@ public class INISchema {
 		}
 
 		public Builder fromFile(Path path) {
-			return fromDocument(INI.fromFile(path));
+		  	try {
+				return fromDocument(schemaReader().read(path));
+	        } catch (IOException ioe) {
+	            throw new UncheckedIOException(ioe);
+	        } catch (ParseException e) {
+	            throw new IllegalStateException("Failed to parse.", e);
+	        }
 		}
 
 		public Builder fromInput(InputStream in) {
-			return fromDocument(INI.fromInput(in));
+		  	try {
+				return fromDocument(schemaReader().read(in));
+	        } catch (IOException ioe) {
+	            throw new UncheckedIOException(ioe);
+	        } catch (ParseException e) {
+	            throw new IllegalStateException("Failed to parse.", e);
+	        }
 		}
 
 		public Builder withList(String name, Supplier<List<?>> supplier) {
@@ -75,61 +91,6 @@ public class INISchema {
 
 	}
 	
-	public final static class Arity {
-		
-		public static final Arity NO_MORE_THAN_ONE = new Arity(0, 1);
-		public static final Arity ONE = new Arity(1, 1);
-		public static final Arity AT_LEAST_ONE = new Arity(1, Integer.MAX_VALUE);
-		public static final Arity ANY = new Arity(0, Integer.MAX_VALUE);
-		
-		private final int min;
-		private final int max;
-		
-		public static Arity parse(String str) {
-			var els = str.split("\\.\\.");
-			
-			if(els.length == 1) {
-				if(els[0].equals("ANY")) 
-					return ANY;
-				else if(els[0].equals("ONE")) 
-					return ONE;
-				else if(els[0].equals("NO_MORE_THAN_ONE")) 
-					return NO_MORE_THAN_ONE;
-				else if(els[0].equals("AT_LEAST_ONE")) 
-					return NO_MORE_THAN_ONE;
-			}
-			
-			var v = els[0].equals("") ? 0 : Integer.parseInt(els[0]);
-			if(els.length == 1) {
-				return new Arity(v, v);
-			}
-			else if(els.length == 2) {
-				var v2 = els[1].equals("") ? Integer.MAX_VALUE : Integer.parseInt(els[1]);
-				return new Arity(v, v2);
-			}
-			else
-				throw new IllegalArgumentException("Invalid format for arity. [<min>]..[<max>]");
-		}
-		
-		private Arity(int min, int max) {
-			super();
-			this.min = min;
-			this.max = max;
-		}
-		
-		public int min() {
-			return min;
-		}
-		
-		public int max() {
-			return max;
-		}
-		
-		public boolean validate(int items) {
-			return items >= min && items <= max;
-		}
-	}
-
 	public final static class SectionDescriptor {
 		private final String key;
 		private final String name;
@@ -153,7 +114,7 @@ public class INISchema {
 			this.arity = arity.orElse(Arity.ONE);
 		}
 		
-		public Arity artity() {
+		public Arity arity() {
 			return arity;
 		}
 
@@ -246,9 +207,17 @@ public class INISchema {
 			return type;
 		}
 
+		public Discriminator discriminator() {
+			return discriminatorOr().get();
+		}
+
 		public Optional<Discriminator> discriminatorOr() {
 			return discriminator;
 		}
+	}
+
+	public static INISchema fromFile(File file) {
+		return fromFile(file.toPath());
 	}
 
 	public static INISchema fromFile(Path path) {
@@ -257,6 +226,18 @@ public class INISchema {
 
 	public static INISchema fromDocument(INI document) {
 		return new Builder().fromDocument(document).build();
+	}
+
+	public static INISchema fromClass(Class<?> base) {
+		return fromClass(base, base.getSimpleName() + ".schema.ini");
+	}
+
+	public static INISchema fromClass(Class<?> base, String resource) {
+		try (var in = base.getResourceAsStream(resource)) {
+			return fromInput(in);
+		} catch (IOException ioe) {
+			throw new UncheckedIOException(ioe);
+		}
 	}
 
 	public static INISchema fromInput(InputStream in) {
@@ -340,19 +321,112 @@ public class INISchema {
 		return getKeyOr(fullPath.split("\\."));
 	}
 
+	public void maybeWriteDefaults(File defaultsFile)  {
+		maybeWriteDefaults(defaultsFile.toPath());
+	}
+	
+	public void maybeWriteDefaults(Path defaultsFile)  {
+		if(!Files.exists(defaultsFile))
+			writeDefaults(defaultsFile);
+	}
+
+	public void writeDefaults(File defaultsFile)  {
+		writeDefaults(defaultsFile.toPath());
+	}
+
+	public void writeDefaults(Path defaultsFile)  {
+		try(var out = Files.newBufferedWriter(defaultsFile)) {
+			writeDefaults(out);
+		}
+		catch(IOException ioe) {
+			throw new UncheckedIOException(ioe);
+		}
+	}
+	
+	public void writeDefaults(Writer writer) throws IOException {
+		var printer = new PrintWriter(writer);
+		var first = new AtomicBoolean();
+		ini.sections().forEach((key, secs) -> {
+			writeSecDefaults(first.get(), secs[0], 0, printer);
+			first.set(false);
+		});
+		printer.flush();
+	}
+
+	private void writeSecDefaults(boolean first, Section section, int indent, PrintWriter printer) {
+		if(!first) {
+			printer.println();
+		}
+		/* TODO section separator config */
+		/* TODO indent config */
+		/* TODO multi value config */
+		
+		var ind = indent(indent);
+		
+		section.getOr("type").ifPresentOrElse(type -> {
+			
+			/* If it has a type, its a key */
+			printNameAndDescription(section, printer, ind);
+			section.getOr("default-value").ifPresentOrElse(val ->
+				printer.format(";%s%s = %s%n", ind, section.key(), val) 
+			, () -> {
+				printer.format(";%s %s = %n", ind, section.key()); 
+			});
+			
+		}, () -> {
+			
+			/* Otherwise it's a section, so recurse */
+			printer.format(";%s%n", repeat('-', 40));
+
+			printNameAndDescription(section, printer, ind);
+			
+			printer.format(";%s%n", repeat('-', 40));
+			printer.format(";%s[%s]%n", ind, String.join(".", section.path()));
+
+			Arrays.asList(section.allSections()).forEach(secsec -> {
+				writeSecDefaults(first, secsec, indent + 1, printer);
+			});
+		});
+		
+	}
+
+	private void printNameAndDescription(Section section, PrintWriter printer, String ind) {
+		section.getOr(SCHEMA_ITEM_NAME).ifPresentOrElse(name -> {
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc ->
+				printer.format(";%s %s - %s%n", ind, name, desc) 
+			, () -> printer.format(";%s %s%n", ind, name));
+		}
+		, () -> {
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresent(desc ->
+				printer.format(";%s %s%n", ind, desc));
+		});
+	}
+	
+	private String repeat(char ch, int width) {
+		var b = new StringBuilder();
+		for(var i = 0 ; i < width ; i++)
+			b.append(ch);
+		return b.toString();
+	}
+
+	
+	private String indent(int indent) {
+		return indent < 2 ? "" : String.format("%" + ( ( indent - 1 ) * 4 )+ "s", "");
+	}
+
 	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
 		return ini.sectionOr(secpath)
 			.map(sec -> {
 				var type = typeForSection(sec); 
 				return new KeyDescriptor(
 					secpath[secpath.length - 1],
-					sec.getOr("name").orElse(secpath[secpath.length - 1]),
+					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
 					type,
 					sec.getAllOr("value"),
 					sec.getAllElse("default-value"),
-					sec.getOr("description"),
+					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
 					discriminatorForSection(type, sec),
-					sec.getOr("arity").map(Arity::parse));
+					sec.getOr(SCHEMA_ITEM_ARITY).map(Arity::parse));
 			});
 	}
 
@@ -369,8 +443,8 @@ public class INISchema {
 		var sections = section.sections();
 		return new SectionDescriptor(
 				section.key(), 
-				section.get("name", section.key()), 
-				section.getOr("description"), 
+				section.get(SCHEMA_ITEM_NAME, section.key()), 
+				section.getOr(SCHEMA_ITEM_DESCRIPTION), 
 				sections.values().stream().
 					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
 					map(k -> {
@@ -382,7 +456,7 @@ public class INISchema {
 						map(k -> { 
 							return sectionDescriptor(k[0]); 
 						}).collect(Collectors.toList()),
-				section.getOr("arity").map(Arity::parse),
+				section.getOr(SCHEMA_ITEM_ARITY).map(Arity::parse),
 				section.path()
 		);
 	}
@@ -441,8 +515,10 @@ public class INISchema {
 					mgr.put(sec.key(), narr);
 				} 
 			}
-			addSchemaSections(mgr, path);
 			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
+			if(!vals.isEmpty()) {
+				addSchemaSections(mgr, path);
+			}
 			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
 		}
 
@@ -517,6 +593,8 @@ public class INISchema {
 
 		public SectionWrapper(Section delegate, AbstractWrapper<?> parent, INISchema set) {
 			super(delegate, parent, set);
+			if(parent == null)
+				throw new IllegalArgumentException("A section must have a parent");
 		}
 
 		@Override
@@ -564,7 +642,8 @@ public class INISchema {
 
 		@Override
 		public INI readOnly() {
-			return delegate.readOnly();
+			var roDelegate = delegate.readOnly();
+			return new RootWrapper(roDelegate, userObject);
 		}
 
 		@Override

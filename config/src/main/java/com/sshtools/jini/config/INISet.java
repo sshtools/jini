@@ -188,6 +188,8 @@ public final class INISet implements Closeable {
 
 		public SectionWrapper(Section delegate, AbstractWrapper<?> parent, INISet set) {
 			super(delegate, parent, set);
+			if(parent == null)
+				throw new IllegalStateException("A section must have a parent");
 		}
 
 		@Override
@@ -259,6 +261,7 @@ public final class INISet implements Closeable {
 		private boolean systemPropertyOverrides = true;
 		private String extension = ".ini";
 		private boolean dropInDirectories = true;
+		private boolean createDefaults = false;
 		private Optional<Supplier<INIReader.Builder>> readerFactory = Optional.empty();
         private Optional<Supplier<INIWriter.Builder>> writerFactory = Optional.empty();
 
@@ -293,6 +296,15 @@ public final class INISet implements Closeable {
 			return this;
 		}
 
+		public Builder withCreateDefaults() {
+			return withCreateDefaults(true);
+		}
+
+		public Builder withCreateDefaults(boolean createDefaults) {
+			this.createDefaults = createDefaults;
+			return this;
+		}
+
 		public Builder withoutSystemPropertyOverrides() {
 			return withSystemPropertyOverrides(false);
 		}
@@ -324,6 +336,10 @@ public final class INISet implements Closeable {
 		public Builder withApp(String app) {
 			this.app = Optional.of(app);
 			return this;
+		}
+
+		public Builder withSchema(Class<?> base) {
+			return withSchema(base, base.getSimpleName() + ".schema.ini");
 		}
 
 		public Builder withSchema(Class<?> base, String resource) {
@@ -381,7 +397,8 @@ public final class INISet implements Closeable {
 	}
 	
 	private static INIReader.Builder defaultReader() {
-        return new INIReader.Builder().withInterpolator(Interpolation.defaults());
+        return new INIReader.Builder().	
+        		withInterpolator(Interpolation.defaults());
 	}
 
 	public final static class INIRef {
@@ -503,6 +520,10 @@ public final class INISet implements Closeable {
 		this.scopes = Collections.unmodifiableList(new ArrayList<>(builder.scopes));
 		this.executor = Executors.newSingleThreadScheduledExecutor();
 		this.writeScope = builder.writeScope;
+		
+		if(builder.createDefaults) {
+			maybeWriteDefaults(builder.writeScope.orElseGet(() -> this.scopes.isEmpty() ? Scope.USER : this.scopes.get(0)));
+		}
 
 		master = load();
 		
@@ -511,6 +532,10 @@ public final class INISet implements Closeable {
 		}
 		else
 			wrapper = new RootWrapper(master, this);
+	}
+	
+	public void maybeWriteDefaults(Scope scope) {
+		schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
 	}
 	
 	public INISchema schema() {

@@ -24,6 +24,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
@@ -789,19 +790,31 @@ public interface INI extends Data {
         private final INI ini;
 
         SectionImpl(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys,
-				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, Data parent, String key, Optional<Interpolator> interpolator,
+				boolean caseSensitiveSections, Map<String, String[]> values, Map<String, Section[]> sections, 
+				Data parent, String key, Optional<Interpolator> interpolator,
                 Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
 			super(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections, values, sections, interpolator, variablePattern, missingVariableMode);
 			this.parent = Optional.of(parent);
+			if(this.parent.isEmpty())
+				throw new IllegalStateException("A section have must have a parent.");
             this.key = key;
             Data p = parent;
             INI ini;
+            
+			if (key.equals("key1a") /* && ((Section)parent).key().equals("section") */) {
+        		System.out.println("brk!");
+            }
+            
             while (true) {
                 if (p instanceof INI) {
                     ini = (INI) p;
                     break;
-                } else
+                } else if(p.parentOr().isEmpty()) {
+                	p = p.document();
+                }
+                else { 
                     p = ((Section) p).parent();
+                }
             }
             this.ini = ini;
 		}
@@ -811,6 +824,8 @@ public interface INI extends Data {
                 Optional<String> variablePattern, MissingVariableMode missingVariableMode) {
             super(emptyValues, preserveOrder, caseSensitiveKeys, caseSenstiveSections, interpolator, variablePattern, missingVariableMode);
             this.parent = Optional.of(parent);
+			if(this.parent.isEmpty())
+				throw new IllegalStateException("A section have must have a parent.");
             this.key = key;
             Data p = parent;
             INI ini;
@@ -868,7 +883,7 @@ public interface INI extends Data {
          */
 		@Override
         public Section parent() {
-            return parentOr().orElseThrow(() -> new IllegalStateException("Has no parent."));
+            return parentOr().orElseThrow(() -> new IllegalStateException(MessageFormat.format("{0} has no parent.", String.join(".", path()))));
         }
 
         /**

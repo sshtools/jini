@@ -43,7 +43,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -206,7 +206,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -345,6 +345,12 @@ There are a number of convenience methods, and a builder `INISchema.Builder` tha
 TODO
 
 ## Changes
+
+### 0.5.0-SNAPSHOT
+
+ * **Schema multi-value mode is now `REPEATED_KEY`.**
+ * `INISet` (via `INISchema`) can now generate a default commented INI file from the schema.
+ * Lots of tests for `INISchema`.
 
 ### 0.4.1
 
