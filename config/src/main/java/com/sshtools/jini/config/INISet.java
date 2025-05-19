@@ -236,7 +236,7 @@ public final class INISet implements Closeable {
 
 		@Override
 		public INI readOnly() {
-			return delegate.readOnly();
+			return new RootWrapper(delegate.readOnly(), userObject);
 		}
 
 		@Override

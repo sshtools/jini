@@ -437,7 +437,7 @@ public class INISchema {
 	private SectionDescriptor sectionDescriptor(Section section) {
 		var type = typeForSection(section);
 		if(!type.equals(Type.SECTION)) {
-			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION);
+			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION + ", but a " + type + " was provided");
 		}
 
 		var sections = section.sections();

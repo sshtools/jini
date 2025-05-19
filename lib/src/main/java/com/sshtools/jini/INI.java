@@ -801,10 +801,6 @@ public interface INI extends Data {
             Data p = parent;
             INI ini;
             
-			if (key.equals("key1a") /* && ((Section)parent).key().equals("section") */) {
-        		System.out.println("brk!");
-            }
-            
             while (true) {
                 if (p instanceof INI) {
                     ini = (INI) p;
