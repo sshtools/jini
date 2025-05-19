@@ -326,8 +326,9 @@ public class INISchema {
 	}
 	
 	public void maybeWriteDefaults(Path defaultsFile)  {
-		if(!Files.exists(defaultsFile))
+		if(!Files.exists(defaultsFile)) {
 			writeDefaults(defaultsFile);
+		}
 	}
 
 	public void writeDefaults(File defaultsFile)  {
@@ -335,8 +336,11 @@ public class INISchema {
 	}
 
 	public void writeDefaults(Path defaultsFile)  {
-		try(var out = Files.newBufferedWriter(defaultsFile)) {
-			writeDefaults(out);
+		try {
+			Files.createDirectories(defaultsFile.getParent());
+			try(var out = Files.newBufferedWriter(defaultsFile)) {
+				writeDefaults(out);
+			}
 		}
 		catch(IOException ioe) {
 			throw new UncheckedIOException(ioe);
