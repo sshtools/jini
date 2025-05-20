@@ -104,6 +104,10 @@ public interface INI extends Data {
          */
         ALWAYS
     }
+
+    public static String[] merge(String val, String... vals) {
+    	return merge(vals, new String[] { val });
+    }
     
     public static String[] merge(String[]... vals) {
     	var l = new ArrayList<String>();
@@ -403,31 +407,32 @@ public interface INI extends Data {
          */
         @Override
         public INI merge(MergeMode mergeMode, INI... others) {
-        	var newDoc = INI.create();
-        	for(var other : others) {
-        		merge(mergeMode, newDoc, other);
-        	}
-        	return newDoc;
+//        	var newDoc = INI.create();
+//        	for(var other : others) {
+//        		merge(mergeMode, newDoc, other);
+//        	}
+//        	return newDoc;
+        	throw new UnsupportedOperationException("Awaiting rewrite.");
         }
 
-    	protected void merge(MergeMode mergeMode, AbstractData newDoc, AbstractData other) {
-    		newDoc.values.putAll(other.values);
-    		for(var sec : other.sections.entrySet()) {
-    			switch(mergeMode) {
-    			case FLATTEN_SECTIONS:
-    				
-    				break;
-    			default:
-    				throw new UnsupportedOperationException();
-    			}
+//    	protected void merge(MergeMode mergeMode, AbstractData newDoc, AbstractData other) {
+//    		newDoc.values.putAll(other.values);
+//    		for(var sec : other.sections.entrySet()) {
+//    			switch(mergeMode) {
+//    			case FLATTEN_SECTIONS:
+//    				
+//    				break;
+//    			default:
+//    				throw new UnsupportedOperationException();
+//    			}
 //    			if(newDoc.sections.containsKey(sec.getKey())) {
 //    				merge(newDoc.sections.get(sec.getKey()), sec.getValue());
 //    			}
 //    			else {
 //    				
 //    			}
-    		}
-    	}
+//    		}
+//    	}
     }
 
 	/**
@@ -1018,7 +1023,7 @@ public interface INI extends Data {
     public enum MergeMode {
     	FLATTEN_SECTIONS
     }
-
+    
     INI merge(MergeMode mergeMode, INI... others);
     
     @Override

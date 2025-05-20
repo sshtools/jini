@@ -32,30 +32,13 @@ import com.sshtools.jini.WrappedINI;
 
 public class INISchema {
 
-	public final static INIReader schemaReader() {
-		return new INIReader.Builder().
-				withDuplicateKeysAction(DuplicateAction.APPEND).
-				withMultiValueMode(MultiValueMode.REPEATED_KEY).
-				withDuplicateSectionAction(DuplicateAction.ABORT).
-				build();
-	}
-
-	public final static INIWriter schemaWriter() {
-		return new INIWriter.Builder().
-				withMultiValueMode(MultiValueMode.REPEATED_KEY).
-				withSectionPathSeparator('\\').
-				build();
-	}
-
-	@Deprecated
-	private static final String SCHEMA_ITEM_ARITY = "arity";
-	private static final String SCHEMA_ITEM_MULTIPLICITY = "multiplicity";
-	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
-	public static final String SCHEMA_ITEM_NAME = "name";
-
 	public final static class Builder {
 		private INI ini;
 		private Map<String, Supplier<List<?>>> lists = new HashMap<>();
+
+		public INISchema build() {
+			return new INISchema(this);
+		}
 
 		public Builder fromDocument(INI ini) {
 			this.ini = ini;
@@ -87,77 +70,17 @@ public class INISchema {
 			return this;
 		}
 
-		public INISchema build() {
-			return new INISchema(this);
-		}
-
-	}
-	
-	public final static class SectionDescriptor {
-		private final String key;
-		private final String name;
-		private final Optional<String> description;
-		private final String[] path;
-		private final List<KeyDescriptor> keys;
-		private final List<SectionDescriptor> sections;
-		private final Multiplicity arity;
-
-		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
-				List<SectionDescriptor> sections,
-				Optional<Multiplicity> arity,
-				String... path) {
-			super();
-			this.key = key;
-			this.name = name;
-			this.path = path;
-			this.description = description;
-			this.keys = keys;
-			this.sections = sections;
-			this.arity = arity.orElse(Multiplicity.ONE);
-		}
-
-		public Multiplicity arity() {
-			return arity;
-		}
-
-		public String name() {
-			return name;
-		}
-
-		public List<KeyDescriptor> keys() {
-			return keys;
-		}
-
-		public List<SectionDescriptor> sections() {
-			return sections;
-		}
-
-		public String[] path() {
-			return path;
-		}
-
-		public String description() {
-			return description.orElseThrow(() -> new IllegalStateException(key + " has no description"));
-		}
-
-		public Optional<String> descriptionOr() {
-			return description;
-		}
-
-		public String key() {
-			return key;
-		}
 	}
 
 	public final static class KeyDescriptor {
+		private final Multiplicity arity;
+		private final String[] defaultValues;
+		private final Optional<String> description;
+		private final Optional<Discriminator> discriminator;
 		private final String key;
 		private final String name;
-		private final Optional<String> description;
 		private final Type type;
 		private final Optional<String[]> values;
-		private final String[] defaultValues;
-		private final Optional<Discriminator> discriminator;
-		private final Multiplicity arity;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
 				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> arity) {
@@ -181,32 +104,16 @@ public class INISchema {
 			return arity;
 		}
 
+		public String[] defaultValues() {
+			return defaultValues;
+		}
+
 		public String description() {
 			return description.orElseThrow(() -> new IllegalStateException(key + " has no description"));
 		}
 
 		public Optional<String> descriptionOr() {
 			return description;
-		}
-
-		public String[] defaultValues() {
-			return defaultValues;
-		}
-
-		public String name() {
-			return name;
-		}
-
-		public Optional<String[]> values() {
-			return values;
-		}
-
-		public String key() {
-			return key;
-		}
-
-		public Type type() {
-			return type;
 		}
 
 		public Discriminator discriminator() {
@@ -216,19 +123,276 @@ public class INISchema {
 		public Optional<Discriminator> discriminatorOr() {
 			return discriminator;
 		}
+
+		public String key() {
+			return key;
+		}
+
+		public String name() {
+			return name;
+		}
+
+		public Type type() {
+			return type;
+		}
+
+		public Optional<String[]> values() {
+			return values;
+		}
 	}
 
-	public static INISchema fromFile(File file) {
-		return fromFile(file.toPath());
+	public final static class SectionDescriptor {
+		private final Multiplicity arity;
+		private final Optional<String> description;
+		private final String key;
+		private final List<KeyDescriptor> keys;
+		private final String name;
+		private final String[] path;
+		private final List<SectionDescriptor> sections;
+
+		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
+				List<SectionDescriptor> sections,
+				Optional<Multiplicity> arity,
+				String... path) {
+			super();
+			this.key = key;
+			this.name = name;
+			this.path = path;
+			this.description = description;
+			this.keys = keys;
+			this.sections = sections;
+			this.arity = arity.orElse(Multiplicity.ONE);
+		}
+
+		public Multiplicity arity() {
+			return arity;
+		}
+
+		public String description() {
+			return description.orElseThrow(() -> new IllegalStateException(key + " has no description"));
+		}
+
+		public Optional<String> descriptionOr() {
+			return description;
+		}
+
+		public String key() {
+			return key;
+		}
+
+		public List<KeyDescriptor> keys() {
+			return keys;
+		}
+
+		public String name() {
+			return name;
+		}
+
+		public String[] path() {
+			return path;
+		}
+
+		public List<SectionDescriptor> sections() {
+			return sections;
+		}
+	}
+	
+	private abstract static class AbstractSchemaWrapper<DEL extends Data>
+			extends WrappedINI.AbstractWrapper<DEL, INISchema, SchemaSectionWrapper> {
+
+		public AbstractSchemaWrapper(DEL delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
+			super(delegate, parent, set);
+		}
+
+		@Override
+		public Optional<Section[]> allSectionsOr(String... path) {
+			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
+			var mgr = new LinkedHashMap<String, Section[]>();
+			for(var sec : allSections) {
+				mgr.put(sec.key(), Section.add(sec, mgr.get(sec.key())));
+			}
+			
+			addSchemaSections(mgr, path);
+				
+			var vals = mgr.values().
+					stream().
+					flatMap(secs -> Arrays.asList(secs).stream()).
+					collect(Collectors.toList());
+			
+			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
+		}
+
+		@Override
+		public boolean contains(String key) {
+			return delegate.contains(key) || userObject.keyOr(this, key).isPresent();
+		}
+
+		@Override
+		public boolean containsSection(String... key) {
+			return super.containsSection(key) || userObject.ini().containsSection(INI.merge(path(), key));
+		}
+
+		@Override
+		public Optional<String[]> getAllOr(String key) {
+			var res = delegate.getAllOr(key);
+			if (res.isPresent()) {
+				return res;
+			} else {
+				var meta = userObject.keyOr(this, key);
+				if(meta.isEmpty()) {
+					return Optional.empty();
+				} else {
+					var def = meta.map(KeyDescriptor::defaultValues);
+					return Optional.of(def.orElse(new String[0]));
+				}
+			}
+		}
+
+		@Override
+		public Set<String> keys() {
+			var l = new LinkedHashSet<>(delegate.keys());
+			l.addAll(userObject.section(path()).keys().stream().map(KeyDescriptor::key).collect(Collectors.toList()));
+			return l;
+		}
+
+		@Override
+		public Map<String, String[]> rawValues() {
+			var fullMap = new LinkedHashMap<>(delegate.rawValues());
+			addDefaults(fullMap);
+			return fullMap;
+		}
+
+		@Override
+		public Map<String, Section[]> sections() {
+			var mgr = new LinkedHashMap<>(super.sections());
+			addSchemaSections(mgr);
+			return mgr;
+		}
+
+		private void addSchemaSections(HashMap<String, Section[]> mgr, String... path) {
+			userObject.sectionOr(this, path).ifPresent(sd -> {
+				if(path.length == 0) {
+					for(var sec : sd.sections()) {
+						maybeWrapSection(mgr, sec);
+					}
+				}
+				else {
+					maybeWrapSection(mgr, sd);
+				}
+			});
+		}
+
+		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) { 
+			for(var k : sec.keys()) {
+				if(k.defaultValues.length < k.arity.min()) {
+					/* Required, and no default values, is there an actual value? */
+					if(!delegate.contains(k.key)) {
+						return;
+					}
+				}
+			}
+			
+			if(!mgr.containsKey(sec.key()))
+				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
+		}
+
+		protected void addDefaults(LinkedHashMap<String, String[]> fullMap) {
+			var path = path();
+			
+			Data data;
+			if(path.length == 0) {
+				data = userObject.ini();
+			}
+			else {
+				data = userObject.ini().section(path);
+			}
+
+			Arrays.asList(data.allSections()).forEach(keysec -> {
+				var k = keysec.key();
+				if(!fullMap.containsKey(k)) {
+					userObject.keyOr(data, k).ifPresent(kd -> {
+						fullMap.put(k, kd.defaultValues());
+					});
+				}
+			});
+		}
+
+		@Override
+		protected SchemaSectionWrapper createWrappedSection(Section delSec) {
+			return new SchemaSectionWrapper(delSec, this, userObject);
+		}
+	}
+	private final static class SchemaFacadeRootWrapper extends AbstractSchemaWrapper<INI> implements INI {
+
+		public SchemaFacadeRootWrapper(INI delegate, INISchema set) {
+			super(delegate, null, set);
+		}
+
+		@Override
+		public INI merge(MergeMode mergeMode, INI... others) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public INI readOnly() {
+			var roDelegate = delegate.readOnly();
+			return new SchemaFacadeRootWrapper(roDelegate, userObject);
+		}
+	}
+	private final static class SchemaSectionWrapper extends AbstractSchemaWrapper<Section> implements Section {
+
+		public SchemaSectionWrapper(Section delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
+			super(delegate, parent, set);
+			if(parent == null) {
+				throw new IllegalArgumentException("A section must have a parent");
+			}
+		}
+
+		@Override
+		public int index() {
+			return delegate.index();
+		}
+
+		@Override
+		public final String key() {
+			return delegate.key();
+		}
+
+		@Override
+		public final Section parent() {
+			if (parent instanceof Section) {
+				return (Section) parent;
+			} else {
+				throw new IllegalStateException("Root section.");
+			}
+		}
+
+		@Override
+		public final Section[] parents() {
+			return wrapSections(delegate.parents());
+		}
+
+		@Override
+		public final String[] path() {
+			return delegate.path();
+		}
+
+		@Override
+		public final void remove() {
+			delegate.remove();
+			((AbstractSchemaWrapper<?>) parent).removeSection(delegate);
+		}
+
 	}
 
-	public static INISchema fromFile(Path path) {
-		return new Builder().fromFile(path).build();
-	}
+	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
+	
+	public static final String SCHEMA_ITEM_NAME = "name";
 
-	public static INISchema fromDocument(INI document) {
-		return new Builder().fromDocument(document).build();
-	}
+	@Deprecated
+	private static final String SCHEMA_ITEM_ARITY = "arity";
+
+	private static final String SCHEMA_ITEM_MULTIPLICITY = "multiplicity";
 
 	public static INISchema fromClass(Class<?> base) {
 		return fromClass(base, base.getSimpleName() + ".schema.ini");
@@ -242,8 +406,39 @@ public class INISchema {
 		}
 	}
 
+	public static INISchema fromDocument(INI document) {
+		return new Builder().fromDocument(document).build();
+	}
+
+	public static INISchema fromFile(File file) {
+		return fromFile(file.toPath());
+	}
+
+	public static INISchema fromFile(Path path) {
+		return new Builder().fromFile(path).build();
+	}
+
 	public static INISchema fromInput(InputStream in) {
 		return new Builder().fromInput(in).build();
+	}
+
+	public final static INIReader schemaReader() {
+		return new INIReader.Builder().
+				withDuplicateKeysAction(DuplicateAction.APPEND).
+				withMultiValueMode(MultiValueMode.REPEATED_KEY).
+				withDuplicateSectionAction(DuplicateAction.ABORT).
+				build();
+	}
+
+	public final static INIWriter schemaWriter() {
+		return new INIWriter.Builder().
+				withMultiValueMode(MultiValueMode.REPEATED_KEY).
+				withSectionPathSeparator('\\').
+				build();
+	}
+
+	private static Type typeForSection(Data sec) {
+		return sec.getEnumOr(Type.class, "type").orElse(Type.SECTION);
 	}
 
 	private final INI ini;
@@ -267,39 +462,42 @@ public class INISchema {
 		return new SchemaFacadeRootWrapper(document, this);
 	}
 
-//	public List<SectionDescriptor> sections(String... path) {
-//		return sections(null, path);
-//	}
-//
-//	public List<SectionDescriptor> sections(Data parent, String... path) {
-//		var fullPath = parent == null ? path : INI.merge(parent.path(), path);
-//		System.out.println("Getting all sections in '" + String.join(".", parent.path()) + "' for path '" + String.join(".", path) + "' which makes '" + String.join(".", fullPath) + "'");
-//		Section[] allSecs = ini.allSectionsOr(fullPath).orElse(new Section[0]);
-//		if(allSecs.length == 0)
-//			return Collections.emptyList();
-//		else {
-//			Section[] childSections = allSecs[0].allSections();
-//			return Arrays.asList(childSections).stream().
-//					filter(sec -> typeForSection(sec).equals(Type.SECTION) ).
-//					map(this::sectionDescriptor).
-//					collect(Collectors.toList());
-//		}
-//	}
-
-	private static Type typeForSection(Data sec) {
-		return sec.getEnumOr(Type.class, "type").orElse(Type.SECTION);
+	public INI ini() {
+		return ini;
 	}
 
-	public SectionDescriptor section(String... path) {
-		return section(null, path);
+	public Optional<KeyDescriptor> keyFromPath(String fullPath) {
+		return getKeyOr(fullPath.split("\\."));
 	}
 
-	public Optional<SectionDescriptor> sectionOr(String... path) {
-		return sectionOr(null, path);
+	public Optional<KeyDescriptor> keyOr(Data data, String key) {
+		return data instanceof Section ? keyOr((Section) data, key) : keyOr((Section) null, key);
+	}
+
+	public Optional<KeyDescriptor> keyOr(Section section, String key) {
+		return getKeyOr(schemaSectionPath(section, key));
+	}
+
+	public Optional<KeyDescriptor> keyOr(String key) {
+		return keyOr(null, key);
+	}
+
+	public void maybeWriteDefaults(File defaultsFile)  {
+		maybeWriteDefaults(defaultsFile.toPath());
+	}
+
+	public void maybeWriteDefaults(Path defaultsFile)  {
+		if(!Files.exists(defaultsFile)) {
+			writeDefaults(defaultsFile);
+		}
 	}
 
 	public SectionDescriptor section(Data parent, String... path) {
 		return sectionOr(parent, path).orElseThrow(() -> new IllegalArgumentException("No such section."));
+	}
+
+	public SectionDescriptor section(String... path) {
+		return section(null, path);
 	}
 
 	public Optional<SectionDescriptor> sectionOr(Data parent, String... path) {
@@ -312,30 +510,8 @@ public class INISchema {
 		return ini.sectionOr(fullPath).map(this::sectionDescriptor);
 	}
 
-	public Optional<KeyDescriptor> keyOr(String key) {
-		return keyOr(null, key);
-	}
-
-	public Optional<KeyDescriptor> keyOr(Data data, String key) {
-		return data instanceof Section ? keyOr((Section) data, key) : keyOr((Section) null, key);
-	}
-
-	public Optional<KeyDescriptor> keyOr(Section section, String key) {
-		return getKeyOr(schemaSectionPath(section, key));
-	}
-
-	public Optional<KeyDescriptor> keyFromPath(String fullPath) {
-		return getKeyOr(fullPath.split("\\."));
-	}
-
-	public void maybeWriteDefaults(File defaultsFile)  {
-		maybeWriteDefaults(defaultsFile.toPath());
-	}
-
-	public void maybeWriteDefaults(Path defaultsFile)  {
-		if(!Files.exists(defaultsFile)) {
-			writeDefaults(defaultsFile);
-		}
+	public Optional<SectionDescriptor> sectionOr(String... path) {
+		return sectionOr(null, path);
 	}
 
 	public void writeDefaults(File defaultsFile)  {
@@ -354,6 +530,7 @@ public class INISchema {
 		}
 	}
 
+
 	public void writeDefaults(Writer writer) throws IOException {
 		var printer = new PrintWriter(writer);
 		var first = new AtomicBoolean();
@@ -362,6 +539,101 @@ public class INISchema {
 			first.set(false);
 		});
 		printer.flush();
+	}
+
+	private Optional<Discriminator> discriminatorForSection(Type type, Section sec) {
+		return sec.getOr("discriminator").map(d -> type.discriminator(d));
+	}
+
+	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
+		return ini.sectionOr(secpath)
+			.map(sec -> {
+				var type = typeForSection(sec);
+				if(type.equals(Type.SECTION)) {
+					return null;
+				}
+				
+				if(sec.contains(SCHEMA_ITEM_ARITY))
+					System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
+				
+				return new KeyDescriptor(
+					secpath[secpath.length - 1],
+					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
+					type,
+					sec.getAllOr("value"),
+					sec.getAllElse("default-value"),
+					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
+					discriminatorForSection(type, sec),
+					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)));
+			});
+	}
+
+	private String indent(int indent) {
+		return indent < 2 ? "" : String.format("%" + ( ( indent - 1 ) * 4 )+ "s", "");
+	}
+
+	private void printNameAndDescription(Section section, PrintWriter printer, String ind) {
+		section.getOr(SCHEMA_ITEM_NAME).ifPresentOrElse(name -> {
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc ->
+				printer.format(";%s %s - %s%n", ind, name, desc)
+			, () -> printer.format(";%s %s%n", ind, name));
+		}
+		, () -> {
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresent(desc ->
+				printer.format(";%s %s%n", ind, desc));
+		});
+	}
+
+	private String repeat(char ch, int width) {
+		var b = new StringBuilder();
+		for(var i = 0 ; i < width ; i++) {
+			b.append(ch);
+		}
+		return b.toString();
+	}
+
+	private String[] schemaSectionPath(Section section, String key) {
+		if (section == null) {
+			return new String[] { key };
+		} else {
+			var path = section.path();
+			var keyDescPath = new String[path.length + 1];
+			System.arraycopy(path, 0, keyDescPath, 0, path.length);
+			keyDescPath[path.length] = key;
+			return keyDescPath;
+		}
+	}
+
+	private SectionDescriptor sectionDescriptor(Data section) {
+		var type = typeForSection(section);
+		if(!type.equals(Type.SECTION)) {
+			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION + ", but a " + type + " was provided");
+		}
+
+		var sections = section.sections();
+
+		if(section.contains(SCHEMA_ITEM_ARITY))
+			System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
+		
+		
+		return new SectionDescriptor(
+				section instanceof Section ? ((Section)section).key() : "",
+				section.get(SCHEMA_ITEM_NAME, section instanceof Section ? ((Section)section).key() : "Root"),
+				section.getOr(SCHEMA_ITEM_DESCRIPTION),
+				sections.values().stream().
+					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
+					map(k -> {
+						return keyOr(section, k[0].key()).
+								orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
+					}).collect(Collectors.toList()),
+				sections.values().stream().
+						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
+						map(k -> {
+							return sectionDescriptor(k[0]);
+						}).collect(Collectors.toList()),
+				section.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> section.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
+				section.path()
+		);
 	}
 
 	private void writeSecDefaults(boolean first, Section section, int indent, PrintWriter printer) {
@@ -399,305 +671,5 @@ public class INISchema {
 			});
 		});
 
-	}
-
-	private void printNameAndDescription(Section section, PrintWriter printer, String ind) {
-		section.getOr(SCHEMA_ITEM_NAME).ifPresentOrElse(name -> {
-			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc ->
-				printer.format(";%s %s - %s%n", ind, name, desc)
-			, () -> printer.format(";%s %s%n", ind, name));
-		}
-		, () -> {
-			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresent(desc ->
-				printer.format(";%s %s%n", ind, desc));
-		});
-	}
-
-	private String repeat(char ch, int width) {
-		var b = new StringBuilder();
-		for(var i = 0 ; i < width ; i++) {
-			b.append(ch);
-		}
-		return b.toString();
-	}
-
-
-	private String indent(int indent) {
-		return indent < 2 ? "" : String.format("%" + ( ( indent - 1 ) * 4 )+ "s", "");
-	}
-
-	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
-		return ini.sectionOr(secpath)
-			.map(sec -> {
-				var type = typeForSection(sec);
-				if(type.equals(Type.SECTION)) {
-					return null;
-				}
-				
-				if(sec.contains(SCHEMA_ITEM_ARITY))
-					System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
-				
-				return new KeyDescriptor(
-					secpath[secpath.length - 1],
-					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
-					type,
-					sec.getAllOr("value"),
-					sec.getAllElse("default-value"),
-					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
-					discriminatorForSection(type, sec),
-					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)));
-			});
-	}
-
-	private Optional<Discriminator> discriminatorForSection(Type type, Section sec) {
-		return sec.getOr("discriminator").map(d -> type.discriminator(d));
-	}
-
-	private SectionDescriptor sectionDescriptor(Data section) {
-		var type = typeForSection(section);
-		if(!type.equals(Type.SECTION)) {
-			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION + ", but a " + type + " was provided");
-		}
-
-		var sections = section.sections();
-
-		if(section.contains(SCHEMA_ITEM_ARITY))
-			System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
-		
-		
-		return new SectionDescriptor(
-				section instanceof Section ? ((Section)section).key() : "",
-				section.get(SCHEMA_ITEM_NAME, section instanceof Section ? ((Section)section).key() : "Root"),
-				section.getOr(SCHEMA_ITEM_DESCRIPTION),
-				sections.values().stream().
-					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
-					map(k -> {
-						return keyOr(section, k[0].key()).
-								orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
-					}).collect(Collectors.toList()),
-				sections.values().stream().
-						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
-						map(k -> {
-							return sectionDescriptor(k[0]);
-						}).collect(Collectors.toList()),
-				section.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> section.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
-				section.path()
-		);
-	}
-
-	private String[] schemaSectionPath(Section section, String key) {
-		if (section == null) {
-			return new String[] { key };
-		} else {
-			var path = section.path();
-			var keyDescPath = new String[path.length + 1];
-			System.arraycopy(path, 0, keyDescPath, 0, path.length);
-			keyDescPath[path.length] = key;
-			return keyDescPath;
-		}
-	}
-
-	public INI ini() {
-		return ini;
-	}
-
-	private abstract static class AbstractSchemaWrapper<DEL extends Data>
-			extends WrappedINI.AbstractWrapper<DEL, INISchema, SchemaSectionWrapper> {
-
-		public AbstractSchemaWrapper(DEL delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
-			super(delegate, parent, set);
-		}
-
-		@Override
-		public Optional<String[]> getAllOr(String key) {
-			var res = delegate.getAllOr(key);
-			if (res.isPresent()) {
-				return res;
-			} else {
-				var meta = userObject.keyOr(this, key);
-				if(meta.isEmpty()) {
-					return Optional.empty();
-				} else {
-					var def = meta.map(KeyDescriptor::defaultValues);
-					return Optional.of(def.orElse(new String[0]));
-				}
-			}
-		}
-
-		@Override
-		public Optional<Section[]> allSectionsOr(String... path) {
-			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
-			var mgr = new LinkedHashMap<String, Section[]>();
-			for(var sec : allSections) {
-				mgr.put(sec.key(), Section.add(sec, mgr.get(sec.key())));
-			}
-			
-//			if(!mgr.isEmpty()) {
-				addSchemaSections(mgr, path);
-//			}
-				
-			var vals = mgr.values().
-					stream().
-					flatMap(secs -> Arrays.asList(secs).stream()).
-					collect(Collectors.toList());
-			
-			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
-		}
-
-		@Override
-		public Map<String, Section[]> sections() {
-			var mgr = new LinkedHashMap<>(super.sections());
-			addSchemaSections(mgr);
-			return mgr;
-		}
-
-		private void addSchemaSections(HashMap<String, Section[]> mgr, String... path) {
-			userObject.sectionOr(this, path).ifPresent(sd -> {
-				if(path.length == 0) {
-					for(var sec : sd.sections()) {
-						maybeWrapSection(mgr, sec);
-					}
-				}
-				else {
-					maybeWrapSection(mgr, sd);
-				}
-			});
-		}
-
-		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) { 
-//			System.out.println(">> " + sec.key());
-			for(var k : sec.keys()) {
-				if(k.defaultValues.length < k.arity.min()) {
-					/* Required, and no default values, is there an actual value? */
-					if(!delegate.contains(k.key)) {
-						return;
-					}
-				}
-			}
-			
-			if(!mgr.containsKey(sec.key()))
-				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
-		}
-
-		@Override
-		public Map<String, String[]> rawValues() {
-			var fullMap = new LinkedHashMap<>(delegate.rawValues());
-			addDefaults(fullMap);
-			return fullMap;
-		}
-
-//		@Override
-//		public Map<String, String[]> values() {
-//			var fullMap = new LinkedHashMap<>(super.values());
-//			addDefaults(fullMap);
-//			return fullMap;
-//		}
-
-		@Override
-		public Set<String> keys() {
-			var l = new LinkedHashSet<>(delegate.keys());
-			l.addAll(userObject.section(path()).keys().stream().map(KeyDescriptor::key).collect(Collectors.toList()));
-			return l;
-		}
-
-		@Override
-		public boolean containsSection(String... key) {
-			return super.containsSection(key) || userObject.ini().containsSection(INI.merge(path(), key));
-		}
-
-		@Override
-		public boolean contains(String key) {
-			return delegate.contains(key) || userObject.keyOr(this, key).isPresent();
-		}
-
-		@Override
-		protected SchemaSectionWrapper createWrappedSection(Section delSec) {
-			return new SchemaSectionWrapper(delSec, this, userObject);
-		}
-
-		protected void addDefaults(LinkedHashMap<String, String[]> fullMap) {
-			var path = path();
-			
-			Data data;
-			if(path.length == 0) {
-				data = userObject.ini();
-			}
-			else {
-				data = userObject.ini().section(path);
-			}
-
-			Arrays.asList(data.allSections()).forEach(keysec -> {
-				var k = keysec.key();
-				if(!fullMap.containsKey(k)) {
-					userObject.keyOr(data, k).ifPresent(kd -> {
-						fullMap.put(k, kd.defaultValues());
-					});
-				}
-			});
-		}
-	}
-
-	private final static class SchemaSectionWrapper extends AbstractSchemaWrapper<Section> implements Section {
-
-		public SchemaSectionWrapper(Section delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
-			super(delegate, parent, set);
-			if(parent == null) {
-				throw new IllegalArgumentException("A section must have a parent");
-			}
-		}
-
-		@Override
-		public final void remove() {
-			delegate.remove();
-			((AbstractSchemaWrapper<?>) parent).removeSection(delegate);
-		}
-
-		@Override
-		public final String key() {
-			return delegate.key();
-		}
-
-		@Override
-		public final Section[] parents() {
-			return wrapSections(delegate.parents());
-		}
-
-		@Override
-		public final String[] path() {
-			return delegate.path();
-		}
-
-		@Override
-		public int index() {
-			return delegate.index();
-		}
-
-		@Override
-		public final Section parent() {
-			if (parent instanceof Section) {
-				return (Section) parent;
-			} else {
-				throw new IllegalStateException("Root section.");
-			}
-		}
-
-	}
-
-	private final static class SchemaFacadeRootWrapper extends AbstractSchemaWrapper<INI> implements INI {
-
-		public SchemaFacadeRootWrapper(INI delegate, INISchema set) {
-			super(delegate, null, set);
-		}
-
-		@Override
-		public INI readOnly() {
-			var roDelegate = delegate.readOnly();
-			return new SchemaFacadeRootWrapper(roDelegate, userObject);
-		}
-
-		@Override
-		public INI merge(MergeMode mergeMode, INI... others) {
-			throw new UnsupportedOperationException();
-		}
 	}
 }

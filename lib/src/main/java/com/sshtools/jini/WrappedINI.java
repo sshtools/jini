@@ -35,7 +35,7 @@ public class WrappedINI {
 		}
 
 		@Override
-		public <E extends Enum<E>> void putAllEnum(String key, E... values) {
+		public <E extends Enum<E>> void putAllEnum(String key, @SuppressWarnings("unchecked") E... values) {
 			delegate.putAllEnum(key, values);
 		}
 

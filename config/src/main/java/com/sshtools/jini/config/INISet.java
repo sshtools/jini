@@ -1,15 +1,5 @@
 package com.sshtools.jini.config;
 
-import com.sshtools.jini.Data;
-import com.sshtools.jini.INI;
-import com.sshtools.jini.INI.Section;
-import com.sshtools.jini.INIReader;
-import com.sshtools.jini.INIWriter;
-import com.sshtools.jini.Interpolation;
-import com.sshtools.jini.WrappedINI;
-import com.sshtools.jini.config.Monitor.MonitorHandle;
-import com.sshtools.jini.schema.INISchema;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,9 +13,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -33,6 +25,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import com.sshtools.jini.Data;
+import com.sshtools.jini.INI;
+import com.sshtools.jini.INI.Section;
+import com.sshtools.jini.INIReader;
+import com.sshtools.jini.INIWriter;
+import com.sshtools.jini.Interpolation;
+import com.sshtools.jini.WrappedINI;
+import com.sshtools.jini.config.Monitor.MonitorHandle;
+import com.sshtools.jini.schema.INISchema;
 
 /**
  * Manages a set of INI files for configuration of a particular subsystem. Every
@@ -66,11 +68,19 @@ public final class INISet implements Closeable {
 
 	private static final String DEFAULT_APP_NAME = "jini";
 	private final static String os = System.getProperty("os.name", "unknown").toLowerCase();
+	
+	private final static class MergeResults {
+		private Set<String> sectionPaths = new HashSet<>();
+		private Set<String> keyPaths = new HashSet<>();
+	}
 
 	private abstract static class AbstractSetWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SetSectionWrapper> {
 
-		public AbstractSetWrapper(DEL delegate, AbstractSetWrapper<?> parent, INISet set) {
+		protected final boolean systemPropertyOverrides;
+
+		public AbstractSetWrapper(boolean systemPropertyOverrides, DEL delegate, AbstractSetWrapper<?> parent, INISet set) {
 			super(delegate, parent, set); 
+			this.systemPropertyOverrides = systemPropertyOverrides;
 		}
 
 		@Override
@@ -92,7 +102,7 @@ public final class INISet implements Closeable {
 		@Override
 		public final Optional<String[]> getAllOr(String key) {
 			var path = path();
-			if(path.length > 0) {
+			if(path.length > 0 && systemPropertyOverrides) {
 				var var = System.getProperty(userObject.name + "." +String.join(".", path) + "." + key);
 				if(var != null) {
 					return Optional.of(new String[] { var });
@@ -103,11 +113,11 @@ public final class INISet implements Closeable {
 
 		@Override
 		protected SetSectionWrapper createWrappedSection(Section delSec) {
-			return new SetSectionWrapper(delSec, this, userObject);
+			return new SetSectionWrapper(systemPropertyOverrides, delSec, this, userObject);
 		}
 
 		@Override
-		public final <E extends Enum<E>> void putAllEnum(String key, E... values) {
+		public final <E extends Enum<E>> void putAllEnum(String key, @SuppressWarnings("unchecked") E... values) {
 			doOnWritable(key, data -> data.putAllEnum(key, values));
 		}
 
@@ -186,8 +196,8 @@ public final class INISet implements Closeable {
 
 	private final static class SetSectionWrapper extends AbstractSetWrapper<Section> implements Section {
 
-		public SetSectionWrapper(Section delegate, AbstractSetWrapper<?> parent, INISet set) {
-			super(delegate, parent, set);
+		public SetSectionWrapper(boolean systemPropertyOverrides, Section delegate, AbstractSetWrapper<?> parent, INISet set) {
+			super(systemPropertyOverrides, delegate, parent, set);
 			if(parent == null)
 				throw new IllegalStateException("A section must have a parent");
 		}
@@ -230,13 +240,13 @@ public final class INISet implements Closeable {
 
 	private final static class RootSetWrapper extends AbstractSetWrapper<INI> implements INI {
 
-		public RootSetWrapper(INI delegate, INISet set) {
-			super(delegate, null, set);
+		public RootSetWrapper(boolean systemPropertyOverrides,INI delegate, INISet set) {
+			super(systemPropertyOverrides, delegate, null, set);
 		}
 
 		@Override
 		public INI readOnly() {
-			return new RootSetWrapper(delegate.readOnly(), userObject);
+			return new RootSetWrapper(systemPropertyOverrides, delegate.readOnly(), userObject);
 		}
 
 		@Override
@@ -528,10 +538,10 @@ public final class INISet implements Closeable {
 		master = load();
 		
 		if(this.schema.isPresent()) {
-			wrapper = this.schema.get().facadeFor(new RootSetWrapper(master, this));
+			wrapper = this.schema.get().facadeFor(new RootSetWrapper(systemPropertyOverrides, master, this));
 		}
 		else
-			wrapper = new RootSetWrapper(master, this);
+			wrapper = new RootSetWrapper(systemPropertyOverrides, master, this);
 	}
 	
 	public void maybeWriteDefaults(Scope scope) {
@@ -635,21 +645,14 @@ public final class INISet implements Closeable {
 
 	private INI mergeToMaster() {
 		INI master = null;
+		var results = new MergeResults();
 		for (var ref : refs) {
-//			System.out.println("Merging " + ref.path() + " ...");
-//			System.out.println(ref.ini.asString());
-//			System.out.println("-----");
 			
 			if (master == null) {
 				master = ref.ini;
 			} else {
-				merge(master, ref.ini, true);
+				merge(results, master, ref.ini, true);
 			}
-			
-//
-//			System.out.println("=====");
-//			System.out.println(master.asString());
-//			System.out.println("-----");
 		}
 		if (master == null)
 			master = INI.create();
@@ -717,63 +720,64 @@ public final class INISet implements Closeable {
 			try {
 				refs.clear();
 				closeMonitorHandles();
-				merge(master, load(), false);
+				var results = new MergeResults();
+				merge(results, master, load(), false);
+				finaliseMerge(results, master);
 			} catch (Exception e) {
 			}
 		}, 1, TimeUnit.SECONDS);
 	}
 
-	private void merge(Data oldDoc, Data newDoc, boolean init) {
-		mergeValues(oldDoc, newDoc, init);
-		mergeSections(oldDoc, newDoc, init);
+	private void finaliseMerge(MergeResults results, INI document) {
+		removeValues(results, document);
+		
+	}
+	private void removeValues(MergeResults results, Data doc) {
+		var it = doc.values().entrySet().iterator();
+		while(it.hasNext()) {
+			var en = it.next();
+			if(!results.keyPaths.contains(keyPath(doc, en.getKey()))) {
+				it.remove();
+			}
+		}
 	}
 
-//	private String sectionName(Data newDoc) {
-//		if (newDoc instanceof Section) {
-//			var sec = (Section)newDoc;
-//			return String.join(".", sec.path());
-//		}
-//		else
-//			return "<root>";
-//	}
+	private void merge(MergeResults results, Data oldDoc, Data newDoc, boolean init) {
+		mergeValues(results, oldDoc, newDoc, init);
+		mergeSections(results, oldDoc, newDoc, init);
+	}
 
-	private void mergeSections(Data oldDoc, Data newDoc, boolean init) {
-//		System.out.println("mergeSection(" + String.join("/", oldDoc.path()) + "," + String.join("/", newDoc.path()) + "," +init + ")");
+	private void mergeSections(MergeResults results, Data oldDoc, Data newDoc, boolean init) {
 		for (var en : newDoc.sections().keySet()) {
+			
+			results.sectionPaths.add(keyPath(oldDoc, en));
+			
 			var newSecs = newDoc.allSections(en);
-//			System.out.println("  " + en + " newsecs: " + newSecs.length);
 			var oldSecs = oldDoc.allSectionsOr(en).orElse(new Section[0]);
-//			System.out.println("  " + en + " oldsecs: " + oldSecs.length);
 			var it1 = Arrays.asList(newSecs).iterator();
 			var it2 = Arrays.asList(oldSecs).iterator();
 			while(it1.hasNext()) {
 				var newIt = it1.next();
 				if(it2.hasNext()) {
 					var oldIt = it2.next();
-					merge(oldIt, newIt, init);
+					merge(results, oldIt, newIt, init);
 				}
 				else {
-					merge(oldDoc.create(en), newIt, init);
+					merge(results, oldDoc.create(en), newIt, init);
 				}
 			}
 		}
-
-		/* TODO: this is not good .. NEED TO FIX!! when stuff is removed. Instead
-		         should keep track of everything that is found during the merging,
-		         then iterate the entire current master and look for any keys or 
-		         sections that were not found */
-//		if (!init) {
-//			for (var it = oldDoc.sections().values().iterator(); it.hasNext();) {
-//				var oldSec = it.next()[0];
-//				if (!newDoc.containsSection(oldSec.key())) {
-//					it.remove();
-//				}
-//			}
-//		}
 	}
 
-	private void mergeValues(Data oldDoc, Data newDoc, boolean init) {
+	private String keyPath(Data data, String suffix) {
+		return String.join("/", INI.merge(suffix, data.path()));
+	}
+
+	private void mergeValues(MergeResults results, Data oldDoc, Data newDoc, boolean init) {
 		for (var en : newDoc.rawValues().entrySet()) {
+			
+			results.keyPaths.add(keyPath(oldDoc, en.getKey()));
+			
 			var oldVal = oldDoc.rawValues().get(en.getKey());
 			var newVal = en.getValue();
 
@@ -781,25 +785,14 @@ public final class INISet implements Closeable {
 				if (!init) {
 					if (oldVal == null) {
 						if (newDoc instanceof Section) {
-							var sec = (Section)newDoc;
+							// TODO
+//							var sec = (Section)newDoc;
 						}
 					} 
 				}
 				oldDoc.putAll(en.getKey(), newVal);
 			}
 		}
-
-		/* TODO: this is not good .. NEED TO FIX!! when stuff is removed. Instead
-		         should keep track of everything that is found during the merging,
-		         then iterate the entire current master and look for any keys or 
-		         sections that were not found */
-//		if (!init) {
-//			for (var key : new ArrayList<>(oldDoc.keys())) {
-//				if (!newDoc.contains(key)) {
-//					oldDoc.remove(key);
-//				}
-//			}
-//		}
 	}
 
 	protected void cancelReloadTask() {
