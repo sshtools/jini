@@ -27,6 +27,7 @@
     </parent>
     <artifactId>jini-config</artifactId>
     <name>Create. manage and monitor INI based configuration in directories appropriate for your operating system.</name>
+    
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

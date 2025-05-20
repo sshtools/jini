@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -322,6 +323,37 @@ public interface INI extends Data {
             throw new UncheckedIOException(ioe);
         }
     }
+
+    /**
+     * Parse a resource that mirrors a class name but with an <code>.ini</code> extension.
+     * For example, given the class <code>com.abc.MyClass</code>, the correspond INI resource
+     * would be <code>/com/abc/MyClass.ini</code>. Character encoding will be the current default. 
+     * 
+     * @param class to derive full resource path from
+     * @return document
+     */
+    public static INI fromResource(Class<?> resource) {
+    	return fromResource(resource, resource.getName() + ".ini");
+    }
+
+    /**
+     * Parse a resource that mirrors a classes package with the supplied filename suffixed.
+     * For example, given the class <code>com.abc.MyClass</code> and the filename <code>data.ini</code>,
+     * the correspond INI resource would be <code>/com/abc/dataClass.ini</code>. Character encoding will be the current default. 
+     * 
+     * @param class class to base path on
+     * @param filename remainder of filename
+     * @return document
+     */
+    public static INI fromResource(Class<?> resource, String filename) {
+        try (var in = resource.getResourceAsStream(filename)) {
+        	if(in == null)
+        		throw new NoSuchFileException(filename);
+            return fromInput(in);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        }
+    }
     
     public final static class DefaultINI extends AbstractData implements INI {
 
@@ -440,7 +472,7 @@ public interface INI extends Data {
     /**
      * Parse a stream that contains a document in INI format. It will have case
      * insensitive keys for values and sections, and insertion order will be
-     * preserved.
+     * preserved. Character encoding will be the current default.
      * 
      * @param in stream
      * @return document
@@ -782,6 +814,20 @@ public interface INI extends Data {
 		 * @return index
 		 */
 		int index();
+
+		
+		static Section[] add(Section sec, Section... sections) {
+			if(sections == null || sections.length == 0 || sections[0] == null) {
+				sections = new Section[] { sec };
+			}
+			else {
+				var narr = new Section[sections.length + 1];
+				System.arraycopy(sections, 0, narr, 0, sections.length);
+				narr[sections.length] = sec;
+				sections = narr;
+			}
+			return sections;
+		}
     }
     
     final static class SectionImpl extends AbstractData implements Section {

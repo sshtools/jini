@@ -23,15 +23,15 @@ import java.util.stream.Collectors;
 
 import com.sshtools.jini.Data;
 import com.sshtools.jini.INI;
+import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.INIReader;
 import com.sshtools.jini.INIReader.DuplicateAction;
 import com.sshtools.jini.INIReader.MultiValueMode;
 import com.sshtools.jini.INIWriter;
-import com.sshtools.jini.INI.Section;
 import com.sshtools.jini.WrappedINI;
 
 public class INISchema {
-	
+
 	public final static INIReader schemaReader() {
 		return new INIReader.Builder().
 				withDuplicateKeysAction(DuplicateAction.APPEND).
@@ -39,7 +39,7 @@ public class INISchema {
 				withDuplicateSectionAction(DuplicateAction.ABORT).
 				build();
 	}
-	
+
 	public final static INIWriter schemaWriter() {
 		return new INIWriter.Builder().
 				withMultiValueMode(MultiValueMode.REPEATED_KEY).
@@ -90,7 +90,7 @@ public class INISchema {
 		}
 
 	}
-	
+
 	public final static class SectionDescriptor {
 		private final String key;
 		private final String name;
@@ -113,7 +113,7 @@ public class INISchema {
 			this.sections = sections;
 			this.arity = arity.orElse(Arity.ONE);
 		}
-		
+
 		public Arity arity() {
 			return arity;
 		}
@@ -174,7 +174,7 @@ public class INISchema {
 				defaultValues.length == 0 ? Arity.ONE : Arity.NO_MORE_THAN_ONE
 			);
 		}
-		
+
 		public Arity arity() {
 			return arity;
 		}
@@ -262,7 +262,7 @@ public class INISchema {
 	 * @return validated document
 	 */
 	public INI facadeFor(INI document) {
-		return new RootWrapper(document, this);
+		return new SchemaFacadeRootWrapper(document, this);
 	}
 
 //	public List<SectionDescriptor> sections(String... path) {
@@ -301,7 +301,11 @@ public class INISchema {
 	}
 
 	public Optional<SectionDescriptor> sectionOr(Data parent, String... path) {
-		var fullPath = parent == null ? path : INI.merge(parent.path(), path);
+		var isRoot = parent == null || parent  instanceof INI;
+		var fullPath = isRoot ? path : INI.merge(parent.path(), path);
+		if(isRoot && fullPath.length == 0) {
+			return Optional.empty();
+		}
 		return ini.sectionOr(fullPath).map(this::sectionDescriptor);
 	}
 
@@ -324,7 +328,7 @@ public class INISchema {
 	public void maybeWriteDefaults(File defaultsFile)  {
 		maybeWriteDefaults(defaultsFile.toPath());
 	}
-	
+
 	public void maybeWriteDefaults(Path defaultsFile)  {
 		if(!Files.exists(defaultsFile)) {
 			writeDefaults(defaultsFile);
@@ -346,7 +350,7 @@ public class INISchema {
 			throw new UncheckedIOException(ioe);
 		}
 	}
-	
+
 	public void writeDefaults(Writer writer) throws IOException {
 		var printer = new PrintWriter(writer);
 		var first = new AtomicBoolean();
@@ -364,26 +368,26 @@ public class INISchema {
 		/* TODO section separator config */
 		/* TODO indent config */
 		/* TODO multi value config */
-		
+
 		var ind = indent(indent);
-		
+
 		section.getOr("type").ifPresentOrElse(type -> {
-			
+
 			/* If it has a type, its a key */
 			printNameAndDescription(section, printer, ind);
 			section.getOr("default-value").ifPresentOrElse(val ->
-				printer.format(";%s%s = %s%n", ind, section.key(), val) 
+				printer.format(";%s%s = %s%n", ind, section.key(), val)
 			, () -> {
-				printer.format(";%s %s = %n", ind, section.key()); 
+				printer.format(";%s %s = %n", ind, section.key());
 			});
-			
+
 		}, () -> {
-			
+
 			/* Otherwise it's a section, so recurse */
 			printer.format(";%s%n", repeat('-', 40));
 
 			printNameAndDescription(section, printer, ind);
-			
+
 			printer.format(";%s%n", repeat('-', 40));
 			printer.format(";%s[%s]%n", ind, String.join(".", section.path()));
 
@@ -391,13 +395,13 @@ public class INISchema {
 				writeSecDefaults(first, secsec, indent + 1, printer);
 			});
 		});
-		
+
 	}
 
 	private void printNameAndDescription(Section section, PrintWriter printer, String ind) {
 		section.getOr(SCHEMA_ITEM_NAME).ifPresentOrElse(name -> {
 			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc ->
-				printer.format(";%s %s - %s%n", ind, name, desc) 
+				printer.format(";%s %s - %s%n", ind, name, desc)
 			, () -> printer.format(";%s %s%n", ind, name));
 		}
 		, () -> {
@@ -405,15 +409,16 @@ public class INISchema {
 				printer.format(";%s %s%n", ind, desc));
 		});
 	}
-	
+
 	private String repeat(char ch, int width) {
 		var b = new StringBuilder();
-		for(var i = 0 ; i < width ; i++)
+		for(var i = 0 ; i < width ; i++) {
 			b.append(ch);
+		}
 		return b.toString();
 	}
 
-	
+
 	private String indent(int indent) {
 		return indent < 2 ? "" : String.format("%" + ( ( indent - 1 ) * 4 )+ "s", "");
 	}
@@ -421,7 +426,10 @@ public class INISchema {
 	private Optional<KeyDescriptor> getKeyOr(String... secpath) {
 		return ini.sectionOr(secpath)
 			.map(sec -> {
-				var type = typeForSection(sec); 
+				var type = typeForSection(sec);
+				if(type.equals(Type.SECTION)) {
+					return null;
+				}
 				return new KeyDescriptor(
 					secpath[secpath.length - 1],
 					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
@@ -446,19 +454,19 @@ public class INISchema {
 
 		var sections = section.sections();
 		return new SectionDescriptor(
-				section.key(), 
-				section.get(SCHEMA_ITEM_NAME, section.key()), 
-				section.getOr(SCHEMA_ITEM_DESCRIPTION), 
+				section.key(),
+				section.get(SCHEMA_ITEM_NAME, section.key()),
+				section.getOr(SCHEMA_ITEM_DESCRIPTION),
 				sections.values().stream().
 					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
 					map(k -> {
 						return keyOr(section, k[0].key()).
 								orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
-					}).collect(Collectors.toList()), 
+					}).collect(Collectors.toList()),
 				sections.values().stream().
 						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
-						map(k -> { 
-							return sectionDescriptor(k[0]); 
+						map(k -> {
+							return sectionDescriptor(k[0]);
 						}).collect(Collectors.toList()),
 				section.getOr(SCHEMA_ITEM_ARITY).map(Arity::parse),
 				section.path()
@@ -481,10 +489,10 @@ public class INISchema {
 		return ini;
 	}
 
-	private abstract static class AbstractWrapper<DEL extends Data>
-			extends WrappedINI.AbstractWrapper<DEL, INISchema, SectionWrapper> {
+	private abstract static class AbstractSchemaWrapper<DEL extends Data>
+			extends WrappedINI.AbstractWrapper<DEL, INISchema, SchemaSectionWrapper> {
 
-		public AbstractWrapper(DEL delegate, AbstractWrapper<?> parent, INISchema set) {
+		public AbstractSchemaWrapper(DEL delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
 			super(delegate, parent, set);
 		}
 
@@ -509,27 +517,19 @@ public class INISchema {
 			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
 			var mgr = new LinkedHashMap<String, Section[]>();
 			for(var sec : allSections) {
-				var arr = mgr.get(sec.key());
-				if(arr == null)
-					mgr.put(sec.key(), new Section[] { sec });
-				else {
-					var narr = new Section[arr.length + 1];
-					System.arraycopy(arr, 0, narr, 0, arr.length);
-					narr[arr.length] = sec;
-					mgr.put(sec.key(), narr);
-				} 
+				mgr.put(sec.key(), Section.add(sec, mgr.get(sec.key())));
 			}
-			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
-			if(!vals.isEmpty()) {
+//			if(!mgr.isEmpty()) {
 				addSchemaSections(mgr, path);
-			}
+//			}
+			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
 			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
 		}
 
 		@Override
 		public Map<String, Section[]> sections() {
 			var mgr = new LinkedHashMap<>(super.sections());
-			addSchemaSections(mgr, path());
+			addSchemaSections(mgr);
 			return mgr;
 		}
 
@@ -550,17 +550,17 @@ public class INISchema {
 
 		@Override
 		public Map<String, String[]> rawValues() {
-			var fullMap = new LinkedHashMap<>(super.rawValues());
+			var fullMap = new LinkedHashMap<>(delegate.rawValues());
 			addDefaults(fullMap);
 			return fullMap;
 		}
 
-		@Override
-		public Map<String, String[]> values() {
-			var fullMap = new LinkedHashMap<>(super.values());
-			addDefaults(fullMap);
-			return fullMap;
-		}
+//		@Override
+//		public Map<String, String[]> values() {
+//			var fullMap = new LinkedHashMap<>(super.values());
+//			addDefaults(fullMap);
+//			return fullMap;
+//		}
 
 		@Override
 		public Set<String> keys() {
@@ -580,31 +580,45 @@ public class INISchema {
 		}
 
 		@Override
-		protected SectionWrapper createWrappedSection(Section delSec) {
-			return new SectionWrapper(delSec, this, userObject);
+		protected SchemaSectionWrapper createWrappedSection(Section delSec) {
+			return new SchemaSectionWrapper(delSec, this, userObject);
 		}
 
 		protected void addDefaults(LinkedHashMap<String, String[]> fullMap) {
-			userObject.section(path()).keys().forEach(kd -> {
-				if(!fullMap.containsKey(kd.key())) {
-					fullMap.put(kd.key(), kd.defaultValues());
+			var path = path();
+			
+			Data data;
+			if(path.length == 0) {
+				data = userObject.ini();
+			}
+			else {
+				data = userObject.ini().section(path);
+			}
+
+			Arrays.asList(data.allSections()).forEach(keysec -> {
+				var k = keysec.key();
+				if(!fullMap.containsKey(k)) {
+					userObject.keyOr(data, k).ifPresent(kd -> {
+						fullMap.put(k, kd.defaultValues());
+					});
 				}
 			});
 		}
 	}
 
-	private final static class SectionWrapper extends AbstractWrapper<Section> implements Section {
+	private final static class SchemaSectionWrapper extends AbstractSchemaWrapper<Section> implements Section {
 
-		public SectionWrapper(Section delegate, AbstractWrapper<?> parent, INISchema set) {
+		public SchemaSectionWrapper(Section delegate, AbstractSchemaWrapper<?> parent, INISchema set) {
 			super(delegate, parent, set);
-			if(parent == null)
+			if(parent == null) {
 				throw new IllegalArgumentException("A section must have a parent");
+			}
 		}
 
 		@Override
 		public final void remove() {
 			delegate.remove();
-			((AbstractWrapper<?>) parent).removeSection(delegate);
+			((AbstractSchemaWrapper<?>) parent).removeSection(delegate);
 		}
 
 		@Override
@@ -638,16 +652,16 @@ public class INISchema {
 
 	}
 
-	private final static class RootWrapper extends AbstractWrapper<INI> implements INI {
+	private final static class SchemaFacadeRootWrapper extends AbstractSchemaWrapper<INI> implements INI {
 
-		public RootWrapper(INI delegate, INISchema set) {
+		public SchemaFacadeRootWrapper(INI delegate, INISchema set) {
 			super(delegate, null, set);
 		}
 
 		@Override
 		public INI readOnly() {
 			var roDelegate = delegate.readOnly();
-			return new RootWrapper(roDelegate, userObject);
+			return new SchemaFacadeRootWrapper(roDelegate, userObject);
 		}
 
 		@Override

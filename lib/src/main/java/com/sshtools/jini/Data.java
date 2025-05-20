@@ -342,7 +342,8 @@ public interface Data {
         @Override
         public Optional<Section[]> allSectionsOr(String... path) {
         	if(path.length == 0) {
-        		return Optional.of(sections().values().stream().flatMap(sections -> Arrays.asList(sections).stream()).collect(Collectors.toList()).toArray(new Section[0]));
+        		var allRoots = sections().values().stream().flatMap(sections -> Arrays.asList(sections).stream()).collect(Collectors.toList());
+				return Optional.of(allRoots.toArray(new Section[0]));
         	}
             Data current = this;
             Section[] sections = null;

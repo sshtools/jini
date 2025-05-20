@@ -18,4 +18,7 @@
 module com.sshtools.jini.config {
 	exports com.sshtools.jini.config;
 	requires transitive com.sshtools.jini.schema;
+
+	/* Unit tests can't load src/test/resources without this? */
+	opens com.sshtools.jini.config;
 }

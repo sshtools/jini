@@ -122,13 +122,13 @@ public class INISchemaTest {
         assertEquals("A section to put other keys or sections in", sec.description());
         assertEquals(Arity.ANY, sec.arity());
         
-        assertSection(schm.section("section", "section"));
+        assertSection1(schm.section("section", "section1"));
         assertSection2(schm.sectionOr("section", "section2").get());
         assertTrue(schm.sectionOr("section", "section88").isEmpty());
         
         assertEquals(sec.sections().size(), 2);
         var secSec = sec.sections().get(0);
-		assertSection(secSec);
+		assertSection1(secSec);
         assertSection2(sec.sections().get(1));
 
         assertKey1(schm.keyFromPath("key1").get());
@@ -142,19 +142,28 @@ public class INISchemaTest {
         assertKey2A(sec.keys().get(1));
         assertKey2A(schm.keyFromPath("section.key2a").get());
 
-        assertKey1B(schm.keyFromPath("section.section.key1b").get());
+        assertKey1B(schm.keyFromPath("section.section1.key1b").get());
+        assertKey1C(schm.keyFromPath("section.section2.key1c").get());
         
     }
 
     @Test
     public void testFacadeForMultipleSections() throws Exception {
     	var schm = testschema();
-    	var ini = INI.fromString(String.format("[section]%nkey1a=false%n[section]%n"));
+    	var ini = INI.fromResource(INISchemaTest.class, "INISchemaTest.testFacadeForMultipleSections.ini");
     	var facade = schm.facadeFor(ini);
     	var secs = facade.allSections("section");
     	assertEquals(2, secs.length);
     	assertEquals(false, secs[0].getBoolean("key1a"));
-    	assertEquals(true, secs[1].getBoolean("key1a"));    	
+    	assertEquals(true, secs[1].getBoolean("key1a"));
+    	assertEquals("CHOICE1", secs[0].get("key2a"));
+    	assertEquals("CHOICE1", secs[1].get("key2a"));
+    	
+    	var subSecs = secs[0].allSections();
+    	assertEquals(2, subSecs.length);
+    	assertEquals(false, secs[0].getBoolean("key1a"));
+    	assertEquals("section1", subSecs[0].key());
+    	assertEquals("section2", subSecs[1].key());
     }
 
 	private void assertKey1(KeyDescriptor key1) {
@@ -184,6 +193,16 @@ public class INISchemaTest {
         assertEquals(Arity.NO_MORE_THAN_ONE, key1a.arity());
         assertTrue(key1a.descriptionOr().isEmpty());
         assertTrue(key1a.discriminatorOr().isEmpty());
+	}
+
+	private void assertKey1C(KeyDescriptor key1c) {
+		assertEquals("Another Key1 In A 2nd Section In A Section", key1c.name());
+        assertEquals("key1c", key1c.key());
+        assertEquals(Type.NUMBER, key1c.type());
+        assertEquals("12.34", key1c.defaultValues()[0]);
+        assertEquals(NumberDiscriminator.DOUBLE, key1c.discriminator());
+        assertEquals(Arity.NO_MORE_THAN_ONE, key1c.arity());
+        assertTrue(key1c.descriptionOr().isEmpty());
 	}
 
 	private void assertKey1B(KeyDescriptor key1a) {
@@ -221,8 +240,8 @@ public class INISchemaTest {
         assertThrows(IllegalStateException.class, () -> secSec2.description());
 	}
 
-	private void assertSection(SectionDescriptor secSec) {
-		assertEquals("section.section", String.join(".", secSec.path()));
+	private void assertSection1(SectionDescriptor secSec) {
+		assertEquals("section.section1", String.join(".", secSec.path()));
         assertEquals("A Section In A Section", secSec.name());
         assertEquals("A section in a section to put other keys in", secSec.description());
         assertEquals(Arity.ONE, secSec.arity());

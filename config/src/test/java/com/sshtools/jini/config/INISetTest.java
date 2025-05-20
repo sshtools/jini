@@ -13,6 +13,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.sshtools.jini.INI;
+import com.sshtools.jini.INIWriter;
 import com.sshtools.jini.config.INISet.Scope;
 
 public class INISetTest {
@@ -35,28 +37,37 @@ public class INISetTest {
     @Test
     public void testReadOnly() throws Exception {
     	assertThrows(UnsupportedOperationException.class, () -> {
-        	testschema().document().readOnly().put("XXX", "YYY");
+        	testSet().document().readOnly().put("XXX", "YYY");
     	});
     }
 
     @Test
     public void testFacadeForMultipleSections() throws Exception {
-    	Files.writeString(checkDir(userSets.resolve("jini")).resolve("jini.ini"), 
-    			String.format("[section]%nkey1a=false%n[section]%n"));
-    	var set = testschema();
-    	var doc = set.document();
-    	System.out.println(doc.asString());
-    	var secs = doc.allSections("section");
+    	var file = checkDir(userSets.resolve("jini")).resolve("jini.ini");
+    	var ini = INI.fromResource(INISetTest.class, "testFacadeForMultipleSections.ini");
+    	new INIWriter.Builder().build().write(ini, file);
+    	var set = testSet();
+    	var facade = set.document();
+    	
+    	var secs = facade.allSections("section");
     	assertEquals(2, secs.length);
     	assertEquals(false, secs[0].getBoolean("key1a"));
-    	assertEquals(true, secs[1].getBoolean("key1a"));    	
+    	assertEquals(true, secs[1].getBoolean("key1a"));
+    	assertEquals("CHOICE1", secs[0].get("key2a"));
+    	assertEquals("CHOICE1", secs[1].get("key2a"));
+    	
+    	var subSecs = secs[0].allSections();
+    	assertEquals(2, subSecs.length);
+    	assertEquals(false, secs[0].getBoolean("key1a"));
+    	assertEquals("section1", subSecs[0].key());
+    	assertEquals("section2", subSecs[1].key());
     }
 
-	private INISet testschema() {
+	private INISet testSet() {
 		return new INISet.Builder("jini").
 				withSchema(INISetTest.class).
 				withPath(Scope.USER, userSets).
-				withPath(Scope.USER, globalSets).
+				withPath(Scope.GLOBAL, globalSets).
 				build();
 	}
 	

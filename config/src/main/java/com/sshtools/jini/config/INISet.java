@@ -67,9 +67,9 @@ public final class INISet implements Closeable {
 	private static final String DEFAULT_APP_NAME = "jini";
 	private final static String os = System.getProperty("os.name", "unknown").toLowerCase();
 
-	private abstract static class AbstractWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SectionWrapper> {
+	private abstract static class AbstractSetWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SetSectionWrapper> {
 
-		public AbstractWrapper(DEL delegate, AbstractWrapper<?> parent, INISet set) {
+		public AbstractSetWrapper(DEL delegate, AbstractSetWrapper<?> parent, INISet set) {
 			super(delegate, parent, set); 
 		}
 
@@ -93,7 +93,7 @@ public final class INISet implements Closeable {
 		public final Optional<String[]> getAllOr(String key) {
 			var path = path();
 			if(path.length > 0) {
-				var var = System.getProperty("slf4jtty." +String.join(".", path) + "." + key);
+				var var = System.getProperty(userObject.name + "." +String.join(".", path) + "." + key);
 				if(var != null) {
 					return Optional.of(new String[] { var });
 				}
@@ -102,8 +102,8 @@ public final class INISet implements Closeable {
 		}
 
 		@Override
-		protected SectionWrapper createWrappedSection(Section delSec) {
-			return new SectionWrapper(delSec, this, userObject);
+		protected SetSectionWrapper createWrappedSection(Section delSec) {
+			return new SetSectionWrapper(delSec, this, userObject);
 		}
 
 		@Override
@@ -184,9 +184,9 @@ public final class INISet implements Closeable {
 		}
 	}
 
-	private final static class SectionWrapper extends AbstractWrapper<Section> implements Section {
+	private final static class SetSectionWrapper extends AbstractSetWrapper<Section> implements Section {
 
-		public SectionWrapper(Section delegate, AbstractWrapper<?> parent, INISet set) {
+		public SetSectionWrapper(Section delegate, AbstractSetWrapper<?> parent, INISet set) {
 			super(delegate, parent, set);
 			if(parent == null)
 				throw new IllegalStateException("A section must have a parent");
@@ -195,7 +195,7 @@ public final class INISet implements Closeable {
 		@Override
 		public final void remove() {
 			delegate.remove();
-			((AbstractWrapper<?>) parent).removeSection(delegate);
+			((AbstractSetWrapper<?>) parent).removeSection(delegate);
 		}
 
 		@Override
@@ -228,15 +228,15 @@ public final class INISet implements Closeable {
 
 	}
 
-	private final static class RootWrapper extends AbstractWrapper<INI> implements INI {
+	private final static class RootSetWrapper extends AbstractSetWrapper<INI> implements INI {
 
-		public RootWrapper(INI delegate, INISet set) {
+		public RootSetWrapper(INI delegate, INISet set) {
 			super(delegate, null, set);
 		}
 
 		@Override
 		public INI readOnly() {
-			return new RootWrapper(delegate.readOnly(), userObject);
+			return new RootSetWrapper(delegate.readOnly(), userObject);
 		}
 
 		@Override
@@ -528,10 +528,10 @@ public final class INISet implements Closeable {
 		master = load();
 		
 		if(this.schema.isPresent()) {
-			wrapper = this.schema.get().facadeFor(new RootWrapper(master, this));
+			wrapper = this.schema.get().facadeFor(new RootSetWrapper(master, this));
 		}
 		else
-			wrapper = new RootWrapper(master, this);
+			wrapper = new RootSetWrapper(master, this);
 	}
 	
 	public void maybeWriteDefaults(Scope scope) {
@@ -636,11 +636,20 @@ public final class INISet implements Closeable {
 	private INI mergeToMaster() {
 		INI master = null;
 		for (var ref : refs) {
+//			System.out.println("Merging " + ref.path() + " ...");
+//			System.out.println(ref.ini.asString());
+//			System.out.println("-----");
+			
 			if (master == null) {
 				master = ref.ini;
 			} else {
 				merge(master, ref.ini, true);
 			}
+			
+//
+//			System.out.println("=====");
+//			System.out.println(master.asString());
+//			System.out.println("-----");
 		}
 		if (master == null)
 			master = INI.create();
@@ -719,31 +728,48 @@ public final class INISet implements Closeable {
 		mergeSections(oldDoc, newDoc, init);
 	}
 
-	private String sectionName(Data newDoc) {
-		if (newDoc instanceof Section) {
-			var sec = (Section)newDoc;
-			return String.join(".", sec.path());
-		}
-		else
-			return "<root>";
-	}
+//	private String sectionName(Data newDoc) {
+//		if (newDoc instanceof Section) {
+//			var sec = (Section)newDoc;
+//			return String.join(".", sec.path());
+//		}
+//		else
+//			return "<root>";
+//	}
 
 	private void mergeSections(Data oldDoc, Data newDoc, boolean init) {
-		/* TODO: multiple sections with same key */
+//		System.out.println("mergeSection(" + String.join("/", oldDoc.path()) + "," + String.join("/", newDoc.path()) + "," +init + ")");
 		for (var en : newDoc.sections().keySet()) {
-			var newSec = newDoc.section(en);
-			var oldSec = oldDoc.sectionOr(en).orElse(oldDoc.create(en));
-			merge(oldSec, newSec, init);
-		}
-
-		if (!init) {
-			for (var it = oldDoc.sections().values().iterator(); it.hasNext();) {
-				var oldSec = it.next()[0];
-				if (!newDoc.containsSection(oldSec.key())) {
-					it.remove();
+			var newSecs = newDoc.allSections(en);
+//			System.out.println("  " + en + " newsecs: " + newSecs.length);
+			var oldSecs = oldDoc.allSectionsOr(en).orElse(new Section[0]);
+//			System.out.println("  " + en + " oldsecs: " + oldSecs.length);
+			var it1 = Arrays.asList(newSecs).iterator();
+			var it2 = Arrays.asList(oldSecs).iterator();
+			while(it1.hasNext()) {
+				var newIt = it1.next();
+				if(it2.hasNext()) {
+					var oldIt = it2.next();
+					merge(oldIt, newIt, init);
+				}
+				else {
+					merge(oldDoc.create(en), newIt, init);
 				}
 			}
 		}
+
+		/* TODO: this is not good .. NEED TO FIX!! when stuff is removed. Instead
+		         should keep track of everything that is found during the merging,
+		         then iterate the entire current master and look for any keys or 
+		         sections that were not found */
+//		if (!init) {
+//			for (var it = oldDoc.sections().values().iterator(); it.hasNext();) {
+//				var oldSec = it.next()[0];
+//				if (!newDoc.containsSection(oldSec.key())) {
+//					it.remove();
+//				}
+//			}
+//		}
 	}
 
 	private void mergeValues(Data oldDoc, Data newDoc, boolean init) {
@@ -763,13 +789,17 @@ public final class INISet implements Closeable {
 			}
 		}
 
-		if (!init) {
-			for (var key : new ArrayList<>(oldDoc.keys())) {
-				if (!newDoc.contains(key)) {
-					oldDoc.remove(key);
-				}
-			}
-		}
+		/* TODO: this is not good .. NEED TO FIX!! when stuff is removed. Instead
+		         should keep track of everything that is found during the merging,
+		         then iterate the entire current master and look for any keys or 
+		         sections that were not found */
+//		if (!init) {
+//			for (var key : new ArrayList<>(oldDoc.keys())) {
+//				if (!newDoc.contains(key)) {
+//					oldDoc.remove(key);
+//				}
+//			}
+//		}
 	}
 
 	protected void cancelReloadTask() {

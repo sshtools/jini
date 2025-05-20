@@ -17,4 +17,7 @@
 module com.sshtools.jini.schema {
 	exports com.sshtools.jini.schema;
 	requires transitive com.sshtools.jini;
+	
+	/* Unit tests can't load src/test/resources without this? */
+	opens com.sshtools.jini.schema;
 }
