@@ -47,7 +47,9 @@ public class INISchema {
 				build();
 	}
 
+	@Deprecated
 	private static final String SCHEMA_ITEM_ARITY = "arity";
+	private static final String SCHEMA_ITEM_MULTIPLICITY = "multiplicity";
 	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
 	public static final String SCHEMA_ITEM_NAME = "name";
 
@@ -90,7 +92,7 @@ public class INISchema {
 		}
 
 	}
-
+	
 	public final static class SectionDescriptor {
 		private final String key;
 		private final String name;
@@ -98,11 +100,11 @@ public class INISchema {
 		private final String[] path;
 		private final List<KeyDescriptor> keys;
 		private final List<SectionDescriptor> sections;
-		private final Arity arity;
+		private final Multiplicity arity;
 
 		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
 				List<SectionDescriptor> sections,
-				Optional<Arity> arity,
+				Optional<Multiplicity> arity,
 				String... path) {
 			super();
 			this.key = key;
@@ -111,10 +113,10 @@ public class INISchema {
 			this.description = description;
 			this.keys = keys;
 			this.sections = sections;
-			this.arity = arity.orElse(Arity.ONE);
+			this.arity = arity.orElse(Multiplicity.ONE);
 		}
 
-		public Arity arity() {
+		public Multiplicity arity() {
 			return arity;
 		}
 
@@ -155,10 +157,10 @@ public class INISchema {
 		private final Optional<String[]> values;
 		private final String[] defaultValues;
 		private final Optional<Discriminator> discriminator;
-		private final Arity arity;
+		private final Multiplicity arity;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
-				Optional<String> description, Optional<Discriminator> discriminator, Optional<Arity> arity) {
+				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> arity) {
 			super();
 			if(type.equals(Type.SECTION)) {
 				throw new IllegalArgumentException("Key may not be of type " + Type.SECTION);
@@ -171,11 +173,11 @@ public class INISchema {
 			this.defaultValues = defaultValue;
 			this.description = description;
 			this.arity = arity.orElseGet(() ->
-				defaultValues.length == 0 ? Arity.ONE : Arity.NO_MORE_THAN_ONE
+				defaultValues.length == 0 ? Multiplicity.ONE : Multiplicity.NO_MORE_THAN_ONE
 			);
 		}
 
-		public Arity arity() {
+		public Multiplicity arity() {
 			return arity;
 		}
 
@@ -284,7 +286,7 @@ public class INISchema {
 //		}
 //	}
 
-	private static Type typeForSection(Section sec) {
+	private static Type typeForSection(Data sec) {
 		return sec.getEnumOr(Type.class, "type").orElse(Type.SECTION);
 	}
 
@@ -301,10 +303,11 @@ public class INISchema {
 	}
 
 	public Optional<SectionDescriptor> sectionOr(Data parent, String... path) {
+		
 		var isRoot = parent == null || parent  instanceof INI;
 		var fullPath = isRoot ? path : INI.merge(parent.path(), path);
 		if(isRoot && fullPath.length == 0) {
-			return Optional.empty();
+			return Optional.of(sectionDescriptor(ini));
 		}
 		return ini.sectionOr(fullPath).map(this::sectionDescriptor);
 	}
@@ -430,6 +433,10 @@ public class INISchema {
 				if(type.equals(Type.SECTION)) {
 					return null;
 				}
+				
+				if(sec.contains(SCHEMA_ITEM_ARITY))
+					System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
+				
 				return new KeyDescriptor(
 					secpath[secpath.length - 1],
 					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
@@ -438,7 +445,7 @@ public class INISchema {
 					sec.getAllElse("default-value"),
 					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
 					discriminatorForSection(type, sec),
-					sec.getOr(SCHEMA_ITEM_ARITY).map(Arity::parse));
+					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)));
 			});
 	}
 
@@ -446,16 +453,21 @@ public class INISchema {
 		return sec.getOr("discriminator").map(d -> type.discriminator(d));
 	}
 
-	private SectionDescriptor sectionDescriptor(Section section) {
+	private SectionDescriptor sectionDescriptor(Data section) {
 		var type = typeForSection(section);
 		if(!type.equals(Type.SECTION)) {
 			throw new IllegalArgumentException("Section may only be of type " + Type.SECTION + ", but a " + type + " was provided");
 		}
 
 		var sections = section.sections();
+
+		if(section.contains(SCHEMA_ITEM_ARITY))
+			System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
+		
+		
 		return new SectionDescriptor(
-				section.key(),
-				section.get(SCHEMA_ITEM_NAME, section.key()),
+				section instanceof Section ? ((Section)section).key() : "",
+				section.get(SCHEMA_ITEM_NAME, section instanceof Section ? ((Section)section).key() : "Root"),
 				section.getOr(SCHEMA_ITEM_DESCRIPTION),
 				sections.values().stream().
 					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
@@ -468,7 +480,7 @@ public class INISchema {
 						map(k -> {
 							return sectionDescriptor(k[0]);
 						}).collect(Collectors.toList()),
-				section.getOr(SCHEMA_ITEM_ARITY).map(Arity::parse),
+				section.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> section.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
 				section.path()
 		);
 	}
@@ -519,10 +531,16 @@ public class INISchema {
 			for(var sec : allSections) {
 				mgr.put(sec.key(), Section.add(sec, mgr.get(sec.key())));
 			}
+			
 //			if(!mgr.isEmpty()) {
 				addSchemaSections(mgr, path);
 //			}
-			var vals = mgr.values().stream().flatMap(secs -> Arrays.asList(secs).stream()).collect(Collectors.toList());
+				
+			var vals = mgr.values().
+					stream().
+					flatMap(secs -> Arrays.asList(secs).stream()).
+					collect(Collectors.toList());
+			
 			return vals.isEmpty() ? Optional.empty() : Optional.of(vals.toArray(new Section[0]));
 		}
 
@@ -537,15 +555,28 @@ public class INISchema {
 			userObject.sectionOr(this, path).ifPresent(sd -> {
 				if(path.length == 0) {
 					for(var sec : sd.sections()) {
-						if(!mgr.containsKey(sec.key()))
-							mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
+						maybeWrapSection(mgr, sec);
 					}
 				}
 				else {
-					if(!mgr.containsKey(sd.key()))
-						mgr.put(sd.key(), new Section[] { wrapSection(delegate.create(sd.key())) });
+					maybeWrapSection(mgr, sd);
 				}
 			});
+		}
+
+		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) { 
+//			System.out.println(">> " + sec.key());
+			for(var k : sec.keys()) {
+				if(k.defaultValues.length < k.arity.min()) {
+					/* Required, and no default values, is there an actual value? */
+					if(!delegate.contains(k.key)) {
+						return;
+					}
+				}
+			}
+			
+			if(!mgr.containsKey(sec.key()))
+				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
 		}
 
 		@Override

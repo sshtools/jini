@@ -348,9 +348,10 @@ TODO
 
 ### 0.5.0-SNAPSHOT
 
- * **Schema multi-value mode is now `REPEATED_KEY`.**
+ * Schema multi-value mode is now `REPEATED_KEY`.
  * `INISet` (via `INISchema`) can now generate a default commented INI file from the schema.
  * Lots of tests for `INISchema`.
+ * `Arity` renamed to `Multiplicity`.
 
 ### 0.4.1
 

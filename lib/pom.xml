@@ -26,7 +26,7 @@
         <relativePath>../</relativePath>
     </parent>
     <artifactId>jini-lib</artifactId>
-    <name>Core of Java INI file reader and writer</name>
+    <name>Jini - Core of Java INI file reader and writer</name>
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

@@ -26,7 +26,8 @@
         <relativePath>../</relativePath>
     </parent>
     <artifactId>jini-config</artifactId>
-    <name>Create. manage and monitor INI based configuration in directories appropriate for your operating system.</name>
+    <name>Jini - Configuration File Framework.</name>
+    <description> Create. manage and monitor INI based configuration in directories appropriate for your operating system.</description>
     
     <dependencies>
         <dependency>

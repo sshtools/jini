@@ -1,16 +1,16 @@
 package com.sshtools.jini.schema;
 
-public final class Arity {
+public final class Multiplicity {
 	
-	public static final Arity NO_MORE_THAN_ONE = new Arity(0, 1);
-	public static final Arity ONE = new Arity(1, 1);
-	public static final Arity AT_LEAST_ONE = new Arity(1, Integer.MAX_VALUE);
-	public static final Arity ANY = new Arity(0, Integer.MAX_VALUE);
+	public static final Multiplicity NO_MORE_THAN_ONE = new Multiplicity(0, 1);
+	public static final Multiplicity ONE = new Multiplicity(1, 1);
+	public static final Multiplicity AT_LEAST_ONE = new Multiplicity(1, Integer.MAX_VALUE);
+	public static final Multiplicity ANY = new Multiplicity(0, Integer.MAX_VALUE);
 	
 	private final int min;
 	private final int max;
 	
-	public static Arity parse(String str) {
+	public static Multiplicity parse(String str) {
 		try {
 			var els = str.split("\\.\\.");
 			
@@ -30,12 +30,12 @@ public final class Arity {
 			var v = els[0].equals("") ? 0 : Integer.parseInt(els[0]);
 			if(els.length == 1) {
 				if(els[0].length() == str.length())
-					return new Arity(v, v);
+					return new Multiplicity(v, v);
 				else
-					return new Arity(v, Integer.MAX_VALUE);
+					return new Multiplicity(v, Integer.MAX_VALUE);
 			}
 			else if(els.length == 2) {
-				return new Arity(v, Integer.parseInt(els[1]));
+				return new Multiplicity(v, Integer.parseInt(els[1]));
 			}
 			else
 				throw new NumberFormatException();
@@ -45,10 +45,13 @@ public final class Arity {
 		}
 	}
 	
-	private Arity(int min, int max) {
+	private Multiplicity(int min, int max) {
 		super();
 		this.min = min;
 		this.max = max;
+		if(min > max) {
+			throw new IllegalArgumentException("Min may not be more than max.");
+		}
 	}
 	
 	public int min() {
@@ -69,5 +72,9 @@ public final class Arity {
 			return String.valueOf(min);
 		else
 			return ( min == 0 ? "" : min ) + ".." + ( max == Integer.MAX_VALUE ? "" : max );
+	}
+
+	public boolean required() {
+		return min > 0;
 	}
 }

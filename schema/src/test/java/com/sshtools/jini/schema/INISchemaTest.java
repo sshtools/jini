@@ -120,7 +120,7 @@ public class INISchemaTest {
         assertEquals("section", sec.key());
         assertEquals("section", String.join(".", sec.path()));
         assertEquals("A section to put other keys or sections in", sec.description());
-        assertEquals(Arity.ANY, sec.arity());
+        assertEquals(Multiplicity.ANY, sec.arity());
         
         assertSection1(schm.section("section", "section1"));
         assertSection2(schm.sectionOr("section", "section2").get());
@@ -166,13 +166,21 @@ public class INISchemaTest {
     	assertEquals("section2", subSecs[1].key());
     }
 
+    @Test
+    public void testNoValidItems() throws Exception {
+    	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.noValidItems.schema.ini");
+    	var facade = schm.facadeFor(INI.create());
+    	assertEquals(0, facade.sections().size());
+    	assertEquals(0, facade.values().size());
+    }
+
 	private void assertKey1(KeyDescriptor key1) {
 		assertEquals("Key1", key1.name());
         assertEquals("key1", key1.key());
         assertEquals(Type.TEXT, key1.type());
         assertEquals("The first key.", key1.description());
         assertEquals("Value 1", key1.defaultValues()[0]);
-        assertEquals(Arity.NO_MORE_THAN_ONE, key1.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1.arity());
 	}
 
 	private void assertKey2(KeyDescriptor key2) {
@@ -181,7 +189,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key2.type());
         assertEquals("The first key (number).", key2.description());
         assertEquals("123", key2.defaultValues()[0]);
-        assertEquals(Arity.NO_MORE_THAN_ONE, key2.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2.arity());
         assertTrue(key2.discriminatorOr().isEmpty());
 	}
 
@@ -190,7 +198,7 @@ public class INISchemaTest {
         assertEquals("key1a", key1a.key());
         assertEquals(Type.BOOLEAN, key1a.type());
         assertEquals("true", key1a.defaultValues()[0]);
-        assertEquals(Arity.NO_MORE_THAN_ONE, key1a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.arity());
         assertTrue(key1a.descriptionOr().isEmpty());
         assertTrue(key1a.discriminatorOr().isEmpty());
 	}
@@ -201,7 +209,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key1c.type());
         assertEquals("12.34", key1c.defaultValues()[0]);
         assertEquals(NumberDiscriminator.DOUBLE, key1c.discriminator());
-        assertEquals(Arity.NO_MORE_THAN_ONE, key1c.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1c.arity());
         assertTrue(key1c.descriptionOr().isEmpty());
 	}
 
@@ -217,7 +225,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key1a.type());
         assertEquals("987654.2345678", key1a.defaultValues()[0]);
         assertEquals(NumberDiscriminator.DOUBLE, key1a.discriminator());
-        assertEquals(Arity.NO_MORE_THAN_ONE, key1a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.arity());
         assertTrue(key1a.descriptionOr().isEmpty());
 	}
 	
@@ -228,7 +236,7 @@ public class INISchemaTest {
         assertEquals("CHOICE1", key2a.defaultValues()[0]);
         assertTrue(key2a.descriptionOr().isEmpty());
         assertThrows(IllegalStateException.class, () -> key2a.description());
-        assertEquals(Arity.NO_MORE_THAN_ONE, key2a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2a.arity());
         assertEquals(Arrays.asList("CHOICE1", "CHOICE2", "CHOICE3"), Arrays.asList(key2a.values().get()));
 	}
 
@@ -244,7 +252,7 @@ public class INISchemaTest {
 		assertEquals("section.section1", String.join(".", secSec.path()));
         assertEquals("A Section In A Section", secSec.name());
         assertEquals("A section in a section to put other keys in", secSec.description());
-        assertEquals(Arity.ONE, secSec.arity());
+        assertEquals(Multiplicity.ONE, secSec.arity());
 	}
 
     

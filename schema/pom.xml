@@ -26,7 +26,7 @@
         <relativePath>../</relativePath>
     </parent>
     <artifactId>jini-schema</artifactId>
-    <name>Schema API and tools</name>
+    <name>Jini - Schema API and tools</name>
     <description>Provides tools for reading schemas describing INI file, themselves INI files.</description>
     <dependencies>
         <dependency>
