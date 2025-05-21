@@ -70,6 +70,8 @@ public class Monitor implements Closeable {
 	
 	private final boolean shutdownExecutor;
 	private final ScheduledExecutorService executor;
+	
+	private boolean run;
 
 	public Monitor() {
 		this(Executors.newSingleThreadScheduledExecutor(), true);
@@ -89,7 +91,7 @@ public class Monitor implements Closeable {
 			throw new UncheckedIOException(e);
 		}
 		var thr = new Thread(() -> {
-			while (true) {
+			while (run) {
 				// wait for key to be signaled
 				WatchKey key;
 				try {
@@ -201,9 +203,17 @@ public class Monitor implements Closeable {
 
 	@Override
 	public void close() throws IOException {
+		run = false;
 		if(shutdownExecutor) {
 			executor.shutdown();
 		}
-		
+		synchronized(watchService) {
+			try {
+				watchService.notifyAll();
+			}
+			finally {
+				watchService.close();
+			}
+		}
 	}
 }
