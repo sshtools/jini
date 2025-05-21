@@ -65,6 +65,10 @@ import com.sshtools.jini.schema.INISchema;
  * already exist are merged.
  */
 public final class INISet implements Closeable {
+	
+	public enum CreateDefaultsMode {
+		NONE, AS_INI, AS_SAMPLE
+	}
 
 	private static final String DEFAULT_APP_NAME = "jini";
 	private final static String os = System.getProperty("os.name", "unknown").toLowerCase();
@@ -271,7 +275,7 @@ public final class INISet implements Closeable {
 		private boolean systemPropertyOverrides = true;
 		private String extension = ".ini";
 		private boolean dropInDirectories = true;
-		private boolean createDefaults = false;
+		private CreateDefaultsMode createDefaults = CreateDefaultsMode.NONE;
 		private Optional<Supplier<INIReader.Builder>> readerFactory = Optional.empty();
         private Optional<Supplier<INIWriter.Builder>> writerFactory = Optional.empty();
 
@@ -306,11 +310,15 @@ public final class INISet implements Closeable {
 			return this;
 		}
 
-		public Builder withCreateDefaults() {
-			return withCreateDefaults(true);
+		public Builder withCreateDefaultsAsINI() {
+			return withCreateDefaults(CreateDefaultsMode.AS_INI);
 		}
 
-		public Builder withCreateDefaults(boolean createDefaults) {
+		public Builder withCreateDefaultsAsSampleINI() {
+			return withCreateDefaults(CreateDefaultsMode.AS_SAMPLE);
+		}
+
+		public Builder withCreateDefaults(CreateDefaultsMode createDefaults) {
 			this.createDefaults = createDefaults;
 			return this;
 		}
@@ -493,6 +501,7 @@ public final class INISet implements Closeable {
 	private final boolean dropInDirectories;
     private final Optional<Supplier<INIReader.Builder>> readerFactory;
     private final Optional<Supplier<INIWriter.Builder>> writerFactory;
+	private CreateDefaultsMode createDefaults;
 
 	private INISet(Builder builder) {
 	    this.readerFactory = builder.readerFactory;
@@ -530,8 +539,8 @@ public final class INISet implements Closeable {
 		this.scopes = Collections.unmodifiableList(new ArrayList<>(builder.scopes));
 		this.executor = Executors.newSingleThreadScheduledExecutor();
 		this.writeScope = builder.writeScope;
-		
-		if(builder.createDefaults) {
+		this.createDefaults = builder.createDefaults;
+		if(builder.createDefaults != CreateDefaultsMode.NONE) {
 			maybeWriteDefaults(builder.writeScope.orElseGet(() -> this.scopes.isEmpty() ? Scope.USER : this.scopes.get(0)));
 		}
 
@@ -545,7 +554,10 @@ public final class INISet implements Closeable {
 	}
 	
 	public void maybeWriteDefaults(Scope scope) {
-		schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
+		if(createDefaults == CreateDefaultsMode.AS_INI)
+			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
+		else
+			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + ".sample" + extension));
 	}
 	
 	public INISchema schema() {
