@@ -77,4 +77,12 @@ public final class Multiplicity {
 	public boolean required() {
 		return min > 0;
 	}
+
+	public boolean multiple() {
+		return max > 1;
+	}
+
+	public boolean once() {
+		return max == min && max == 1;
+	}
 }

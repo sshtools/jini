@@ -139,6 +139,10 @@ public class INISchema {
 		public Optional<String[]> values() {
 			return values;
 		}
+
+		public <DEL extends Data> boolean validate(DEL delegate) {
+			return arity.validate((delegate.contains(key) ? delegate.getAll(key) : defaultValues).length);
+		}
 	}
 
 	public final static class SectionDescriptor {
@@ -146,11 +150,17 @@ public class INISchema {
 		private final Optional<String> description;
 		private final String key;
 		private final List<KeyDescriptor> keys;
+		private final List<KeyDescriptor> allKeys;
 		private final String name;
 		private final String[] path;
 		private final List<SectionDescriptor> sections;
 
-		private SectionDescriptor(String key, String name, Optional<String> description, List<KeyDescriptor> keys,
+		private SectionDescriptor(
+				String key, 
+				String name, 
+				Optional<String> description, 
+				List<KeyDescriptor> allKeys, 
+				List<KeyDescriptor> keys,
 				List<SectionDescriptor> sections,
 				Optional<Multiplicity> arity,
 				String... path) {
@@ -159,6 +169,7 @@ public class INISchema {
 			this.name = name;
 			this.path = path;
 			this.description = description;
+			this.allKeys = allKeys;
 			this.keys = keys;
 			this.sections = sections;
 			this.arity = arity.orElse(Multiplicity.ONE);
@@ -182,6 +193,10 @@ public class INISchema {
 
 		public List<KeyDescriptor> keys() {
 			return keys;
+		}
+
+		public List<KeyDescriptor> allKeys() {
+			return allKeys;
 		}
 
 		public String name() {
@@ -282,17 +297,34 @@ public class INISchema {
 			});
 		}
 
-		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) { 
-			for(var k : sec.keys()) {
-				if(k.defaultValues.length < k.arity.min()) {
-					/* Required, and no default values, is there an actual value? */
-					if(!delegate.contains(k.key)) {
-						return;
+		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) {
+			boolean haveValue;
+			if(sec.arity.once()) {
+				haveValue = false;
+				
+				/* If a section can exist exactly once. Then it is valid if ANY
+				 * of it's keys are  
+				 */
+				for(var k : sec.allKeys()) {
+					if(k.validate(delegate)) {
+						haveValue = true;
+						break;
+					}
+				}
+			}
+			else {
+				var keys = sec.allKeys();
+				haveValue = keys.size() > 0;
+				/* Other, it's only valid if ALL of its keys are. */
+				for(var k : keys) {
+					if(!k.validate(delegate)) {
+						haveValue = false;
+						break;
 					}
 				}
 			}
 			
-			if(!mgr.containsKey(sec.key()))
+			if(haveValue && !mgr.containsKey(sec.key()))
 				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
 		}
 
@@ -311,7 +343,8 @@ public class INISchema {
 				var k = keysec.key();
 				if(!fullMap.containsKey(k)) {
 					userObject.keyOr(data, k).ifPresent(kd -> {
-						fullMap.put(k, kd.defaultValues());
+						if(kd.validate(delegate))
+							fullMap.put(k, kd.defaultValues());
 					});
 				}
 			});
@@ -614,18 +647,25 @@ public class INISchema {
 
 		if(section.contains(SCHEMA_ITEM_ARITY))
 			System.err.println("[JINI] @Deprecated ARITY is replaced with MULTIPLICITY");
+
+		var allKeys = sections.values().stream().
+				filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
+				map(k -> {
+					return keyOr(section, k[0].key()).
+							orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
+				}).
+				collect(Collectors.toList());
 		
+		var keys = allKeys.stream().
+				filter(k -> k.validate(section)).
+				collect(Collectors.toList());
 		
 		return new SectionDescriptor(
 				section instanceof Section ? ((Section)section).key() : "",
 				section.get(SCHEMA_ITEM_NAME, section instanceof Section ? ((Section)section).key() : "Root"),
 				section.getOr(SCHEMA_ITEM_DESCRIPTION),
-				sections.values().stream().
-					filter(s -> !typeForSection(s[0]).equals(Type.SECTION)).
-					map(k -> {
-						return keyOr(section, k[0].key()).
-								orElseThrow(() -> new IllegalStateException("Huh? " + k[0].key() + " @ " + String.join(".", section.path())));
-					}).collect(Collectors.toList()),
+				allKeys,
+				keys,
 				sections.values().stream().
 						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
 						map(k -> {

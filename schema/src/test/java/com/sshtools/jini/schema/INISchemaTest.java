@@ -170,6 +170,37 @@ public class INISchemaTest {
     public void testNoValidItems() throws Exception {
     	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.noValidItems.schema.ini");
     	var facade = schm.facadeFor(INI.create());
+    	System.out.println(">> " + facade.asString());
+    	assertEquals(0, facade.sections().size());
+    	assertEquals(0, facade.values().size());
+    }
+
+    @Test
+    public void testNoValidItemsAny() throws Exception {
+    	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.noValidItemsAny.schema.ini");
+    	var facade = schm.facadeFor(INI.create());
+    	System.out.println(">> " + facade.asString());
+    	assertEquals(0, facade.sections().size());
+    	assertEquals(0, facade.values().size());
+    }
+    
+    @Test
+    public void testOneValidItem() throws Exception {
+    	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.oneValidItem.schema.ini");
+    	var facade = schm.facadeFor(INI.create());
+    	assertEquals(1, facade.sections().size());
+    	assertEquals(0, facade.values().size());
+    	var sec = facade.section("item");
+    	assertEquals(1, sec.values().size());
+    	assertEquals("/", sec.get("val3"));
+    	
+    }
+
+    @Test
+    public void testSomeValidItems() throws Exception {
+    	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.noValidItems.schema.ini");
+    	var facade = schm.facadeFor(INI.create());
+    	System.out.println(facade.asString());
     	assertEquals(0, facade.sections().size());
     	assertEquals(0, facade.values().size());
     }
