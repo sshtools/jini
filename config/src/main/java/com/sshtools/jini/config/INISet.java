@@ -67,7 +67,7 @@ import com.sshtools.jini.schema.INISchema;
 public final class INISet implements Closeable {
 	
 	public enum CreateDefaultsMode {
-		NONE, AS_INI, AS_SAMPLE
+		NONE, INI, SAMPLE
 	}
 
 	private static final String DEFAULT_APP_NAME = "jini";
@@ -311,11 +311,11 @@ public final class INISet implements Closeable {
 		}
 
 		public Builder withCreateDefaultsAsINI() {
-			return withCreateDefaults(CreateDefaultsMode.AS_INI);
+			return withCreateDefaults(CreateDefaultsMode.INI);
 		}
 
 		public Builder withCreateDefaultsAsSampleINI() {
-			return withCreateDefaults(CreateDefaultsMode.AS_SAMPLE);
+			return withCreateDefaults(CreateDefaultsMode.SAMPLE);
 		}
 
 		public Builder withCreateDefaults(CreateDefaultsMode createDefaults) {
@@ -554,7 +554,7 @@ public final class INISet implements Closeable {
 	}
 	
 	public void maybeWriteDefaults(Scope scope) {
-		if(createDefaults == CreateDefaultsMode.AS_INI)
+		if(createDefaults == CreateDefaultsMode.INI)
 			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
 		else
 			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + ".sample" + extension));
