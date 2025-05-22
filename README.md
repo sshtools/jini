@@ -346,6 +346,10 @@ TODO
 
 ## Changes
 
+### 0.5.1-SNAPSHOT
+
+ * `INISet` now by default will only use one scope, either `USER` or `GLOBAL`. If the path where the global scoped files are located is writable, then the scope is `GLOBAL`, otherwise it is `USER`. To return to previous behaviour of both scopes, use `withAllScopes()` on  the builder.
+
 ### 0.5.0
 
  * Schema multi-value mode is now `REPEATED_KEY`.

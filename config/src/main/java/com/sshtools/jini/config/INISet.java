@@ -342,6 +342,10 @@ public final class INISet implements Closeable {
 			return this;
 		}
 
+		public Builder withAllScopes() {
+			return withScopes(Scope.values());
+		}
+
 		public Builder withScopes(Scope... scopes) {
 			this.scopes = Arrays.asList(scopes);
 			return this;
@@ -482,7 +486,7 @@ public final class INISet implements Closeable {
 
 	private final Optional<INISchema> schema;
 	private final Optional<INI> defaultIni;
-	private List<Scope> scopes = new ArrayList<>();
+	private final List<Scope> scopes;
 	private final String app;
 	private final String extension;
 	private final Map<Scope, Path> paths;
@@ -536,12 +540,14 @@ public final class INISet implements Closeable {
 		this.app = builder.app.orElse(DEFAULT_APP_NAME);
 		this.paths = Collections.unmodifiableMap(new HashMap<>(builder.paths));
 		this.name = builder.name;
-		this.scopes = Collections.unmodifiableList(new ArrayList<>(builder.scopes));
+		this.scopes = builder.scopes.isEmpty() 
+				? detectScopes() 
+				: Collections.unmodifiableList(new ArrayList<>(builder.scopes));
 		this.executor = Executors.newSingleThreadScheduledExecutor();
 		this.writeScope = builder.writeScope;
 		this.createDefaults = builder.createDefaults;
 		if(builder.createDefaults != CreateDefaultsMode.NONE) {
-			maybeWriteDefaults(builder.writeScope.orElseGet(() -> this.scopes.isEmpty() ? Scope.USER : this.scopes.get(0)));
+			maybeWriteDefaults(builder.writeScope.orElseGet(() -> scopes().get(0)));
 		}
 
 		master = load();
@@ -553,6 +559,34 @@ public final class INISet implements Closeable {
 			wrapper = new RootSetWrapper(systemPropertyOverrides, master, this);
 	}
 	
+	private List<Scope> detectScopes() {
+		var l = new ArrayList<Scope>();
+		var path = appPathForScope(Scope.GLOBAL);
+		
+		/*
+		 * Watch for either [name].ini appearing, disappearing or changing, or [name].d
+		 * appearing / disappearing
+		 */
+		if (Files.exists(path)) {
+			if(Files.isWritable(path)) {
+				l.add(Scope.GLOBAL);
+			}
+		}
+		else {
+			try {
+				Files.createDirectories(path);
+				l.add(Scope.GLOBAL);
+			} catch (IOException ioe) {
+			}
+		}
+		
+		if(l.isEmpty()) {
+			l.add(Scope.USER);
+		}
+		
+		return l;
+	}
+
 	public void maybeWriteDefaults(Scope scope) {
 		if(createDefaults == CreateDefaultsMode.INI)
 			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
@@ -560,6 +594,22 @@ public final class INISet implements Closeable {
 			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + ".sample" + extension));
 	}
 	
+	public String app() {
+		return app;
+	}
+
+	public String name() {
+		return name;
+	}
+
+	public List<Scope> scopes() {
+		return scopes;
+	}
+
+	public Optional<Scope> writeScope() {
+		return writeScope;
+	}
+
 	public INISchema schema() {
 		return schema.get();
 	}
@@ -645,11 +695,12 @@ public final class INISet implements Closeable {
 		/* First add the default, if any */
 		defaultIni.ifPresent(doc -> refs.add(new INIRef(doc, writerFactory)));
 
-		if (scopes.isEmpty()) {
+		var scplst = scopes();
+		if (scplst.isEmpty()) {
 			load(Scope.GLOBAL);
 			load(Scope.USER);
 		} else {
-			scopes.forEach(this::load);
+			scplst.forEach(this::load);
 		}
 
 		return mergeToMaster();

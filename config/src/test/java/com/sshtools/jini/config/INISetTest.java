@@ -65,6 +65,7 @@ public class INISetTest {
 
 	private INISet testSet() {
 		return new INISet.Builder("jini").
+				withAllScopes().
 				withSchema(INISetTest.class).
 				withPath(Scope.USER, userSets).
 				withPath(Scope.GLOBAL, globalSets).
