@@ -264,7 +264,7 @@ public final class INISet implements Closeable {
 	}
 
 	public final static class Builder {
-		private Optional<Scope> writeScope = Optional.empty();
+		private Optional<Scope> writeScope;
 		private Optional<INISchema> schema = Optional.empty();
 		private Optional<INI> defaultIni = Optional.empty();
         private Optional<InputStream> defaultIniStream = Optional.empty();
@@ -544,7 +544,10 @@ public final class INISet implements Closeable {
 				? detectScopes() 
 				: Collections.unmodifiableList(new ArrayList<>(builder.scopes));
 		this.executor = Executors.newSingleThreadScheduledExecutor();
-		this.writeScope = builder.writeScope;
+		this.writeScope = builder.writeScope == null
+				? detectWriteScope()
+				: builder.writeScope;
+		
 		this.createDefaults = builder.createDefaults;
 		if(builder.createDefaults != CreateDefaultsMode.NONE) {
 			maybeWriteDefaults(builder.writeScope.orElseGet(() -> scopes().get(0)));
@@ -557,34 +560,6 @@ public final class INISet implements Closeable {
 		}
 		else
 			wrapper = new RootSetWrapper(systemPropertyOverrides, master, this);
-	}
-	
-	private List<Scope> detectScopes() {
-		var l = new ArrayList<Scope>();
-		var path = appPathForScope(Scope.GLOBAL);
-		
-		/*
-		 * Watch for either [name].ini appearing, disappearing or changing, or [name].d
-		 * appearing / disappearing
-		 */
-		if (Files.exists(path)) {
-			if(Files.isWritable(path)) {
-				l.add(Scope.GLOBAL);
-			}
-		}
-		else {
-			try {
-				Files.createDirectories(path);
-				l.add(Scope.GLOBAL);
-			} catch (IOException ioe) {
-			}
-		}
-		
-		if(l.isEmpty()) {
-			l.add(Scope.USER);
-		}
-		
-		return l;
 	}
 
 	public void maybeWriteDefaults(Scope scope) {
@@ -684,6 +659,46 @@ public final class INISet implements Closeable {
 		} finally {
 			executor.shutdown();
 		}
+	}
+
+	private Optional<Scope> detectWriteScope() {
+		for(var p : Scope.values()) {
+			if(isWritableDir(appPathForScope(p)))  {
+				return Optional.of(p);
+			}
+		}
+		return Optional.empty();
+	}
+	
+	private List<Scope> detectScopes() {
+		var l = new ArrayList<Scope>();
+		var path = appPathForScope(Scope.GLOBAL);
+		
+		if (isWritableDir(path)) {
+			l.add(Scope.GLOBAL);
+		}
+		else {
+			l.add(Scope.USER);
+		}
+		
+		return l;
+	}
+	
+	private boolean isWritableDir(Path path) {
+		if (Files.exists(path)) {
+			if(Files.isWritable(path)) {
+				return true;
+			}
+		}
+		else {
+			try {
+				Files.createDirectories(path);
+				return true;
+			} catch (IOException ioe) {
+			}
+		}
+
+		return false;
 	}
 
 	private void closeMonitorHandles() {
