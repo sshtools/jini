@@ -43,7 +43,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.5.0</version>
 </dependency>
 ```
 
@@ -346,11 +346,11 @@ TODO
 
 ## Changes
 
-### 0.5.0-SNAPSHOT
+### 0.5.0
 
  * Schema multi-value mode is now `REPEATED_KEY`.
  * `INISet` (via `INISchema`) can now generate a default commented INI file from the schema.
- * Lots of tests for `INISchema`.
+ * Lots of tests and fixes for `INISchema`.
  * `Arity` renamed to `Multiplicity`.
 
 ### 0.4.1
