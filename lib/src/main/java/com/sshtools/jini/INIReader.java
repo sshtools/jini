@@ -676,7 +676,7 @@ public final class INIReader extends AbstractIO {
 		                        	else if (isQuote(ch)) {
 		                                quoted = ch;
 		                            } else if (ch == commentCharacter && comments && inlineComments) {
-	                            		column = line.length();
+	                            		column = lineChars.length;
 		                                break;
 		                            } else if (key == null) {
 		                                if (ch == valueSeparator) {
