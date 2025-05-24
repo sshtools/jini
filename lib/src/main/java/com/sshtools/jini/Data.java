@@ -15,8 +15,6 @@
  */
 package com.sshtools.jini;
 
-import static com.sshtools.jini.Data.arrayToList;
-
 import java.io.Closeable;
 import java.lang.reflect.Array;
 import java.text.MessageFormat;
@@ -1544,8 +1542,10 @@ public interface Data {
      */
     @SuppressWarnings("unchecked")
 	default <E extends Enum<E>> Optional<E[]> getAllEnumOr(Class<E> type, String key) {
-        var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Enum.valueOf(type, v)).toArray());
-        return arr.isEmpty() ? Optional.empty() : Optional.of((E[])arr.get());
+        var arr = getAllOr(key).map(s -> Arrays.asList(s).stream().map(v -> Enum.valueOf(type, v)));
+        return arr.isEmpty() 
+        	? Optional.empty() 
+        	: Optional.of((E[])arr.get().collect(Collectors.toList()).toArray((E[])Array.newInstance(type, 0)));
     }
     
     /**
