@@ -550,7 +550,7 @@ public final class INISet implements Closeable {
 		
 		this.createDefaults = builder.createDefaults;
 		if(builder.createDefaults != CreateDefaultsMode.NONE) {
-			maybeWriteDefaults(builder.writeScope.orElseGet(() -> scopes().get(0)));
+			maybeWriteDefaults(this.writeScope.orElseGet(() -> scopes().get(0)));
 		}
 
 		master = load();
