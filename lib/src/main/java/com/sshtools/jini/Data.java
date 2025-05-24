@@ -15,7 +15,10 @@
  */
 package com.sshtools.jini;
 
+import static com.sshtools.jini.Data.arrayToList;
+
 import java.io.Closeable;
+import java.lang.reflect.Array;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1518,7 +1521,7 @@ public interface Data {
      */
     @SuppressWarnings("unchecked")
 	default <E extends Enum<E>> E[] getAllEnum(Class<E> type, String key) {
-        return (E[]) Arrays.asList(getAll(key)).stream().map(v -> Enum.valueOf(type, v)).collect(Collectors.toList()).toArray();
+		return (E[]) Arrays.asList(getAll(key)).stream().map(v -> Enum.valueOf(type, v)).collect(Collectors.toList()).toArray((E[])Array.newInstance(type, 0));
     }
 
     /**
