@@ -22,7 +22,7 @@
     <parent>
         <artifactId>jini</artifactId>
         <groupId>com.sshtools</groupId>
-   		<version>0.5.1-SNAPSHOT</version>
+   		<version>0.5.1</version>
         <relativePath>../</relativePath>
     </parent>
     <artifactId>jini-schema</artifactId>
