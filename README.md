@@ -43,7 +43,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.5.0</version>
+    <version>0.5.3</version>
 </dependency>
 ```
 
@@ -146,7 +146,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <version>0.5.3</version>
 </dependency>
 ```
 
@@ -206,7 +206,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.5.3</version>
 </dependency>
 ```
 
