@@ -468,7 +468,7 @@ public class INISchema {
 	public static final String SCHEMA_ITEM_NAME = "name";
 
 	@Deprecated
-	private static final String SCHEMA_ITEM_ARITY = "multiplicity";
+	private static final String SCHEMA_ITEM_ARITY = "arity";
 
 	private static final String SCHEMA_ITEM_MULTIPLICITY = "multiplicity";
 

@@ -346,6 +346,10 @@ TODO
 
 ## Changes
 
+### 0.5.3
+
+ * False positives for detecting if deprecated `arity` was being used.
+
 ### 0.5.2
 
  * `INISet` would not include a parent section if it ONLY had child sections with no keys.
