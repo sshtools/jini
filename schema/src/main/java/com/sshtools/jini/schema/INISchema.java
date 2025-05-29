@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2023 JAdaptive Limited (support@jadaptive.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sshtools.jini.schema;
 
 import java.io.File;
@@ -73,7 +88,7 @@ public class INISchema {
 	}
 
 	public final static class KeyDescriptor {
-		private final Multiplicity arity;
+		private final Multiplicity multiplicity;
 		private final String[] defaultValues;
 		private final Optional<String> description;
 		private final Optional<Discriminator> discriminator;
@@ -83,7 +98,7 @@ public class INISchema {
 		private final Optional<String[]> values;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
-				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> arity) {
+				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> multiplicity) {
 			super();
 			if(type.equals(Type.SECTION)) {
 				throw new IllegalArgumentException("Key may not be of type " + Type.SECTION);
@@ -95,13 +110,13 @@ public class INISchema {
 			this.values = values;
 			this.defaultValues = defaultValue;
 			this.description = description;
-			this.arity = arity.orElseGet(() ->
+			this.multiplicity = multiplicity.orElseGet(() ->
 				defaultValues.length == 0 ? Multiplicity.ONE : Multiplicity.NO_MORE_THAN_ONE
 			);
 		}
 
-		public Multiplicity arity() {
-			return arity;
+		public Multiplicity multiplicity() {
+			return multiplicity;
 		}
 
 		public String[] defaultValues() {
@@ -141,12 +156,12 @@ public class INISchema {
 		}
 
 		public <DEL extends Data> boolean validate(DEL delegate) {
-			return arity.validate((delegate.contains(key) ? delegate.getAll(key) : defaultValues).length);
+			return multiplicity.validate((delegate.contains(key) ? delegate.getAll(key) : defaultValues).length);
 		}
 	}
 
 	public final static class SectionDescriptor {
-		private final Multiplicity arity;
+		private final Multiplicity multiplicity;
 		private final Optional<String> description;
 		private final String key;
 		private final List<KeyDescriptor> keys;
@@ -162,7 +177,7 @@ public class INISchema {
 				List<KeyDescriptor> allKeys, 
 				List<KeyDescriptor> keys,
 				List<SectionDescriptor> sections,
-				Optional<Multiplicity> arity,
+				Optional<Multiplicity> multiplicity,
 				String... path) {
 			super();
 			this.key = key;
@@ -172,11 +187,11 @@ public class INISchema {
 			this.allKeys = allKeys;
 			this.keys = keys;
 			this.sections = sections;
-			this.arity = arity.orElse(Multiplicity.ONE);
+			this.multiplicity = multiplicity.orElse(Multiplicity.ONE);
 		}
 
 		public Multiplicity arity() {
-			return arity;
+			return multiplicity;
 		}
 
 		public String description() {
@@ -298,8 +313,15 @@ public class INISchema {
 		}
 
 		private void maybeWrapSection(HashMap<String, Section[]> mgr, SectionDescriptor sec) {
+			boolean haveValue = shouldWrapSection(sec);
+			
+			if(haveValue && !mgr.containsKey(sec.key()))
+				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
+		}
+
+		private boolean shouldWrapSection(SectionDescriptor sec) {
 			boolean haveValue;
-			if(sec.arity.once()) {
+			if(sec.multiplicity.once()) {
 				haveValue = false;
 				
 				/* If a section can exist exactly once. Then it is valid if ANY
@@ -311,6 +333,17 @@ public class INISchema {
 						break;
 					}
 				}
+				
+				/* Or if ANY of its sections are */
+				if(!haveValue) {
+					for(var s : sec.sections()) {
+						if(shouldWrapSection(s)) {
+							haveValue = true;
+							break;
+						}
+					}
+				}
+				
 			}
 			else {
 				var keys = sec.allKeys();
@@ -322,10 +355,22 @@ public class INISchema {
 						break;
 					}
 				}
+				
+				/* OR if ALL of its sections are */
+				if(!haveValue) {
+					var secs = sec.sections();
+
+					haveValue = secs.size() > 0;
+					/* Other, it's only valid if ALL of its keys are. */
+					for(var s : secs) {
+						if(!shouldWrapSection(s)) {
+							haveValue = false;
+							break;
+						}
+					}
+				}
 			}
-			
-			if(haveValue && !mgr.containsKey(sec.key()))
-				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
+			return haveValue;
 		}
 
 		protected void addDefaults(LinkedHashMap<String, String[]> fullMap) {
@@ -423,7 +468,7 @@ public class INISchema {
 	public static final String SCHEMA_ITEM_NAME = "name";
 
 	@Deprecated
-	private static final String SCHEMA_ITEM_ARITY = "arity";
+	private static final String SCHEMA_ITEM_ARITY = "multiplicity";
 
 	private static final String SCHEMA_ITEM_MULTIPLICITY = "multiplicity";
 

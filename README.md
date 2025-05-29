@@ -346,6 +346,11 @@ TODO
 
 ## Changes
 
+### 0.5.2
+
+ * `INISet` would not include a parent section if it ONLY had child sections with no keys.
+    This was fixed by applying the same multiplicity rules of keys to sections.
+
 ### 0.5.1
 
  * `INISet` now by default will only use one scope, either `USER` or `GLOBAL`. If the path where the global scoped files are located is writable, then the scope is `GLOBAL`, otherwise it is `USER`. To return to previous behaviour of both scopes, use `withAllScopes()` on  the builder.

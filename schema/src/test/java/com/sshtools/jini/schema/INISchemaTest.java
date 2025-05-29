@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2023 JAdaptive Limited (support@jadaptive.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sshtools.jini.schema;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -211,7 +226,7 @@ public class INISchemaTest {
         assertEquals(Type.TEXT, key1.type());
         assertEquals("The first key.", key1.description());
         assertEquals("Value 1", key1.defaultValues()[0]);
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1.multiplicity());
 	}
 
 	private void assertKey2(KeyDescriptor key2) {
@@ -220,7 +235,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key2.type());
         assertEquals("The first key (number).", key2.description());
         assertEquals("123", key2.defaultValues()[0]);
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2.multiplicity());
         assertTrue(key2.discriminatorOr().isEmpty());
 	}
 
@@ -229,7 +244,7 @@ public class INISchemaTest {
         assertEquals("key1a", key1a.key());
         assertEquals(Type.BOOLEAN, key1a.type());
         assertEquals("true", key1a.defaultValues()[0]);
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.multiplicity());
         assertTrue(key1a.descriptionOr().isEmpty());
         assertTrue(key1a.discriminatorOr().isEmpty());
 	}
@@ -240,7 +255,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key1c.type());
         assertEquals("12.34", key1c.defaultValues()[0]);
         assertEquals(NumberDiscriminator.DOUBLE, key1c.discriminator());
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1c.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1c.multiplicity());
         assertTrue(key1c.descriptionOr().isEmpty());
 	}
 
@@ -256,7 +271,7 @@ public class INISchemaTest {
         assertEquals(Type.NUMBER, key1a.type());
         assertEquals("987654.2345678", key1a.defaultValues()[0]);
         assertEquals(NumberDiscriminator.DOUBLE, key1a.discriminator());
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key1a.multiplicity());
         assertTrue(key1a.descriptionOr().isEmpty());
 	}
 	
@@ -267,7 +282,7 @@ public class INISchemaTest {
         assertEquals("CHOICE1", key2a.defaultValues()[0]);
         assertTrue(key2a.descriptionOr().isEmpty());
         assertThrows(IllegalStateException.class, () -> key2a.description());
-        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2a.arity());
+        assertEquals(Multiplicity.NO_MORE_THAN_ONE, key2a.multiplicity());
         assertEquals(Arrays.asList("CHOICE1", "CHOICE2", "CHOICE3"), Arrays.asList(key2a.values().get()));
 	}
 
