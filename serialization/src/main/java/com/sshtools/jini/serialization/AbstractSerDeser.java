@@ -190,10 +190,10 @@ abstract class AbstractSerDeser {
 			var mname = method.getName();
 			switch(resolvePattern()) {
 			case BEAN:
-				if(mname.startsWith("is") && mname.length() > 2) {
+				if(isIs(mname)) {
 					return mname.substring(2, 3).toLowerCase() + mname.substring(3);
 				}
-				else if((mname.startsWith("set") || mname.startsWith("get")) && mname.length() > 3) {
+				else if(isGetterOrSetter(mname)) {
 					return mname.substring(3, 4).toLowerCase() + mname.substring(4);					
 				}
 				else {
@@ -247,11 +247,18 @@ abstract class AbstractSerDeser {
 		   (method.getName().equals("toString") && method.getParameterCount() == 0))
 			return false;
 		
-		var typeDefaultRule = trb.rule();
-		if(typeDefaultRule == Rule.DEFAULT)
-			typeDefaultRule = Rule.INCLUDE;
-		
 		var frb = methodBehaviour(method);
+		
+		var typeDefaultRule = trb.rule();
+		if(typeDefaultRule == Rule.DEFAULT) {
+			typeDefaultRule = Rule.INCLUDE;
+			if(trb.methodNamePattern() == MethodNamePattern.BEAN) {
+				if(!isIs(method.getName()) && !isGetterOrSetter(method.getName())) {
+					typeDefaultRule = Rule.EXCLUDE;
+				}
+			}
+		}
+		
 		var rule = frb.rule();
 		if(rule == Rule.DEFAULT) {
 			rule = typeDefaultRule;
@@ -412,5 +419,13 @@ abstract class AbstractSerDeser {
 	
 	private final boolean needsAccess(Method f) {
 		return !Modifier.isPublic(f.getModifiers());
+	}
+
+	private static boolean isGetterOrSetter(String mname) {
+		return (mname.startsWith("set") || mname.startsWith("get")) && mname.length() > 3;
+	}
+
+	private static boolean isIs(String mname) {
+		return mname.startsWith("is") && mname.length() > 2;
 	}
 }
