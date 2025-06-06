@@ -498,18 +498,18 @@ public final class INIReaderTest {
     @Test
     public void testMultilineStrings() throws Exception {
         var ini = new INIReader.Builder().build().read("Key 0 = Val 0\n" +
-                "Key 1 = '''\n" + 
-                "    Line 1 of multi-line string\n" + 
-                "    Line 2 of multi-line string\n" + 
-                "    Line 3 of multi-line string\n" + 
-                "    Line 4 of multi-line string\n" +
-                "    '''\n" +
-                "Key 2 = Val 2\n");
+                "Key 1 = '''" + System.lineSeparator() + 
+                "    Line 1 of multi-line string" + System.lineSeparator() + 
+                "    Line 2 of multi-line string" + System.lineSeparator() +
+                "    Line 3 of multi-line string" + System.lineSeparator() +
+                "    Line 4 of multi-line string" +System.lineSeparator() +
+                "    '''" + System.lineSeparator() + 
+                "Key 2 = Val 2" + System.lineSeparator());
         assertEquals(3, ini.values().size());
         assertEquals("Val 0", ini.get("Key 0"));
-        assertEquals("Line 1 of multi-line string\n" + 
-	                "Line 2 of multi-line string\n" + 
-	                "Line 3 of multi-line string\n" + 
+        assertEquals("Line 1 of multi-line string" +System.lineSeparator() +  
+	                "Line 2 of multi-line string" + System.lineSeparator() +
+	                "Line 3 of multi-line string" + System.lineSeparator() +
 	                "Line 4 of multi-line string", ini.get("Key 1"));
         assertEquals("Val 2", ini.get("Key 2"));
     }    

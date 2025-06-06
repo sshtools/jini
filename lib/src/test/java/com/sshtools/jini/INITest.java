@@ -541,16 +541,29 @@ public class INITest {
         return "\nKey1 = Val 1\n[Sec1\n";
     }
 
+	static String getHomeVar() {
+		/* Windows doesn't have HOME envar, but does have a HOMEPATH */
+    	var home = System.getenv("HOME");
+    	var homeVar = "HOME";
+    	if(home == null) {
+        	home = System.getenv("HOMEPATH");
+        	homeVar = "HOMEPATH";
+        	if(home == null)
+        		throw new IllegalStateException("No suitable envvar for test.");
+    	}
+		return homeVar;
+	}
+
     static String getVariablesIni() {
         return "; Some Comment\n" +
-               "Path 1 = ${env:HOME}\n" +
+               "Path 1 = ${env:" + getHomeVar() + "}\n" +
                "User 1 = ${sys:user.name}\n" +
                "Key 1 = Val 1\n" +
                "Error 1 = ${xxxxx}\n" +
                "\n" +
                "; Another Comment\n" +
                "[Section1]\n" +
-               "Path 1 = ${env:HOME}\n" +
+               "Path 1 = ${env:" + getHomeVar() + "}\n" +
                "User 1 = ${sys:user.name}\n" +
                "Key 1 = Val 1\n" +
                "Error 1 = ${xxxxx}\n" +
@@ -559,14 +572,14 @@ public class INITest {
 
     static String getWinVariablesIni() {
         return "; Some Comment\n" +
-               "Path 1 = %env:HOME%\n" +
+               "Path 1 = %env:" + getHomeVar() + "%\n" +
                "User 1 = %sys:user.name%\n" +
                "Key 1 = Val 1\n" +
                "Error 1 = %xxxxx%\n" +
                "\n" +
                "; Another Comment\n" +
                "[Section1]\n" +
-               "Path 1 = %env:HOME%\n" +
+               "Path 1 = %env:" + getHomeVar() + "%\n" +
                "User 1 = %sys:user.name%\n" +
                "Key 1 = Val 1\n" +
                "Error 1 = %xxxxx%\n" +
@@ -609,12 +622,12 @@ public class INITest {
 	static void assertVariables(INI ini) {
 		assertEquals(4, ini.size());
         assertEquals("Val 1", ini.get("Key 1"));
-        assertEquals(System.getenv("HOME"), ini.get("Path 1"));
+        assertEquals(System.getenv(getHomeVar()), ini.get("Path 1"));
         assertEquals(System.getProperty("user.name"), ini.get("User 1"));
         var sec = ini.section("Section1");
         assertEquals(4, sec.size());
         assertEquals("Val 1", sec.get("Key 1"));
-        assertEquals(System.getenv("HOME"), sec.get("Path 1"));
+        assertEquals(System.getenv(getHomeVar()), sec.get("Path 1"));
         assertEquals(System.getProperty("user.name"), sec.get("User 1"));
 	}
 

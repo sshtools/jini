@@ -20,12 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.text.ParseException;
 
-import com.sshtools.jini.INI.Section;
+import org.junit.jupiter.api.Test;
+
 import com.sshtools.jini.INIReader.DuplicateAction;
 import com.sshtools.jini.INIReader.MultiValueMode;
 import com.sshtools.jini.INIWriter.StringQuoteMode;
-
-import org.junit.jupiter.api.Test;
 
 public class INIWriterTest {
 
@@ -42,42 +41,42 @@ public class INIWriterTest {
                 build();
         
         assertEquals(
-                "Key1 = Val1\n" +
-                "Key1 = Val2\n" +
-                "Key1 = Val3\n" +
-                "Key1 = Val4\n", wrtr.write(ini));
+                "Key1 = Val1" + System.lineSeparator() +
+                "Key1 = Val2" + System.lineSeparator() +
+                "Key1 = Val3" + System.lineSeparator() +
+                "Key1 = Val4" + System.lineSeparator(), wrtr.write(ini));
     }
 
     @Test
     public void testMultiValueModeSeparated() throws Exception {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read(
-                "Key1 = Val1\n" +
-                "Key1 = Val2\n" +
-                "Key1 = Val3\n" +
-                "Key1 = Val4\n");
+                "Key1 = Val1" + System.lineSeparator() +
+                "Key1 = Val2" + System.lineSeparator() +
+                "Key1 = Val3" + System.lineSeparator() +
+                "Key1 = Val4" + System.lineSeparator());
         
         var wrtr = new INIWriter.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
                 build();
         
-        assertEquals("Key1 = Val1, Val2, Val3, Val4\n", wrtr.write(ini));
+        assertEquals("Key1 = Val1, Val2, Val3, Val4"+ System.lineSeparator(), wrtr.write(ini));
     }
 
 
     @Test
     public void testMultiValueModeSeparatedWithoutSpace() throws Exception {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.APPEND).build().read(
-                "Key1 = Val1\n" +
-                "Key1 = Val2\n" +
-                "Key1 = Val3\n" +
-                "Key1 = Val4\n");
+                "Key1 = Val1" + System.lineSeparator()+
+                "Key1 = Val2" + System.lineSeparator()+
+                "Key1 = Val3" + System.lineSeparator()+
+                "Key1 = Val4"+ System.lineSeparator());
         
         var wrtr = new INIWriter.Builder().
                 withMultiValueMode(MultiValueMode.SEPARATED).
                 withoutTrimmedValue().
                 build();
         
-        assertEquals("Key1 = Val1,Val2,Val3,Val4\n", wrtr.write(ini));
+        assertEquals("Key1 = Val1,Val2,Val3,Val4"+ System.lineSeparator(), wrtr.write(ini));
     }
 
 
@@ -99,11 +98,11 @@ public class INIWriterTest {
                 withMultiValueMode(MultiValueMode.SEPARATED).build();
         
         assertEquals(
-        		"[Section1]\n" +
-        		"Key1=Val1\n\n" +
-        		"[Section1]\n" +
-        		"Key2=Val2\n" +
-        		"Key3=Val3\n"
+        		"[Section1]" + System.lineSeparator() +
+        		"Key1=Val1"  + System.lineSeparator() + System.lineSeparator() +
+        		"[Section1]"  + System.lineSeparator() + 
+        		"Key2=Val2" + System.lineSeparator() +
+        		"Key3=Val3" + System.lineSeparator()
         		, wtr.write(ini));
     }
 }

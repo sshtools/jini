@@ -39,20 +39,36 @@ public final class InterpolationTest {
     
     @Test
     public void testInterpolateEnv() throws Exception {
+    	
+    	var homeVar = getHomeVar();
+    	
     	Assertions.assertEquals(
 			"This text, XX, should be replaced".
-				replace("XX", System.getenv("HOME")), 
-			Interpolation.str(null, "This text, ${env:HOME}, should be replaced", 
+				replace("XX", System.getenv(homeVar)), 
+			Interpolation.str(null, "This text, ${env:" + homeVar + "}, should be replaced", 
 					environment()));
     }
+
+	private String getHomeVar() {
+		/* Windows doesn't have HOME envar, but does have a HOMEPATH */
+    	var home = System.getenv("HOME");
+    	var homeVar = "HOME";
+    	if(home == null) {
+        	home = System.getenv("HOMEPATH");
+        	homeVar = "HOMEPATH";
+        	if(home == null)
+        		throw new IllegalStateException("No suitable envvar for test.");
+    	}
+		return homeVar;
+	}
     
     @Test
     public void testInterpolateCompound() throws Exception {
     	Assertions.assertEquals(
 			"This text, XX, should be replaced, as should YY".
-				replace("XX", System.getenv("HOME")).
+				replace("XX", System.getenv(getHomeVar())).
 				replace("YY", System.getProperty("user.name")), 
-			Interpolation.str(null, "This text, ${env:HOME}, should be replaced, as should ${sys:user.name}",
+			Interpolation.str(null, "This text, ${env:" + getHomeVar() + "}, should be replaced, as should ${sys:user.name}",
 					compound(
 						systemProperties(),
 						environment()
