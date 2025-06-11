@@ -31,38 +31,38 @@ import com.sshtools.jini.serialization.INISerialization.Rule;
 public abstract class AbstractSerializerTest {
 
 	protected final static String INI_TEXT = //
-			"name = Joe B\n" + //
-					"age = 32\n" + //
-					"sendSpam = true\n" + //
-					"signature = \"AQIDBAU=\"\n" + //
-					"payload = \"oLDA0OA=\"\n" + //
-					"telephones = 123 456789, 987 654321\n" + //
-					"favouriteColour = GREEN\n" + //
-					"\n" + //
-					"[props]\n" + //
-					"  Prop1 = Str1\n" + //
-					"  Prop2 = Str2\n" + //
-					"\n" + //
-					"[items]\n" + //
-					"  key = An Orange\n" + //
-					"  number = 123\n" + //
-					"\n" + //
-					"[items]\n" + //
-					"  key = A Bag Of Dreamies\n" + //
-					"  number = 456\n" + //
-					"\n" + //
-					"[items]\n" + //
-					"  key = Fourteen Pairs Of Pink Slippers\n" + //
-					"  number = 789\n" + //
-					"\n" + //
-					"[address]\n" + //
-					"  streetAddress = 11 Some Road\n" + //
-					"  city = London\n" + //
-					"  county = Essex\n" + //
-					"\n" + //
-					"  [address.country]\n" + //
-					"    name = United Kingdom\n" + //
-					"    code = UK\n"; //
+			"name = Joe B" + System.lineSeparator() + "" + //
+					"age = 32" + System.lineSeparator() + "" + //
+					"sendSpam = true" + System.lineSeparator() + "" + //
+					"signature = \"AQIDBAU=\"" + System.lineSeparator() + "" + //
+					"payload = \"oLDA0OA=\"" + System.lineSeparator() + "" + //
+					"telephones = 123 456789, 987 654321" + System.lineSeparator() + "" + //
+					"favouriteColour = GREEN" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"[props]" + System.lineSeparator() + "" + //
+					"  Prop1 = Str1" + System.lineSeparator() + "" + //
+					"  Prop2 = Str2" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"[items]" + System.lineSeparator() + "" + //
+					"  key = An Orange" + System.lineSeparator() + "" + //
+					"  number = 123" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"[items]" + System.lineSeparator() + "" + //
+					"  key = A Bag Of Dreamies" + System.lineSeparator() + "" + //
+					"  number = 456" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"[items]" + System.lineSeparator() + "" + //
+					"  key = Fourteen Pairs Of Pink Slippers" + System.lineSeparator() + "" + //
+					"  number = 789" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"[address]" + System.lineSeparator() + "" + //
+					"  streetAddress = 11 Some Road" + System.lineSeparator() + "" + //
+					"  city = London" + System.lineSeparator() + "" + //
+					"  county = Essex" + System.lineSeparator() + "" + //
+					"" + System.lineSeparator() + "" + //
+					"  [address.country]" + System.lineSeparator() + "" + //
+					"    name = United Kingdom" + System.lineSeparator() + "" + //
+					"    code = UK" + System.lineSeparator() + ""; //
 
 
 	
