@@ -86,7 +86,7 @@ public class Monitor implements Closeable {
 	private final boolean shutdownExecutor;
 	private final ScheduledExecutorService executor;
 	
-	private boolean run;
+	private boolean run = true;
 
 	public Monitor() {
 		this(Executors.newSingleThreadScheduledExecutor(), true);

@@ -346,6 +346,10 @@ TODO
 
 ## Changes
 
+### 0.5.4
+
+ * `Monitor` never started.
+
 ### 0.5.3
 
  * False positives for detecting if deprecated `arity` was being used.
