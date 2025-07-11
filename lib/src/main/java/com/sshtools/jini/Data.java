@@ -160,6 +160,9 @@ public interface Data {
 
         final Optional<String> variablePattern;
         final MissingVariableMode missingVariableMode;
+        
+        final Map<String, String[]> keyComments = new HashMap<String, String[]>();
+        final List<String> comments = new ArrayList<>();
 
         AbstractData(boolean emptyValues, boolean preserveOrder, boolean caseSensitiveKeys, boolean caseSensitiveSections,
                 Map<String, String[]> values, Map<String, Section[]> sections, Optional<Interpolator> interpolator,
@@ -185,6 +188,29 @@ public interface Data {
         }
 
         @Override
+		public String[] getComments() {
+			return comments.toArray(new String[0]);
+		}
+
+		@Override
+		public void setComments(String... comments) {
+			synchronized(this.comments) {
+				this.comments.clear();
+				this.comments.addAll(Arrays.asList(comments));
+			}
+		}
+
+		@Override
+		public String[] getKeyComments(String key) {
+			return keyComments.getOrDefault(key, new String[0]);
+		}
+
+		@Override
+		public void setKeyComments(String key, String... comments) {
+			keyComments.put(key, comments);
+		}
+
+		@Override
 		public boolean empty() {
 			return sections.isEmpty() && values.isEmpty();
 		}
@@ -204,6 +230,8 @@ public interface Data {
 		@Override
 		public void clear() {
 			values.clear();
+			keyComments.clear();
+			comments.clear();
 			fireUpdated(this, null, null, null);
 		}
 
@@ -211,6 +239,7 @@ public interface Data {
         public boolean remove(String key) {
 			var was = values.get(key);
             var removed = values.remove(key) != null;
+            keyComments.remove(key);
 			fireUpdated(this, key, was, null);
             return removed;
         }
@@ -554,6 +583,42 @@ public interface Data {
     	}
     	return (Section)data;
     }
+    
+	/**
+	 * Get any comments for this section or document.
+	 * 
+	 * @param key key of value
+	 * @return document or section contains key
+	 */
+	String[] getComments();
+
+	/**
+	 * Set comments for this section or document. Just provide the key alone to
+	 * remove all comments.
+	 * 
+	 * @param comments comments
+	 * @return document or section contains key
+	 */
+	void setComments(String... comments);
+
+	/**
+	 * Get any comments for the given key in this section or document. If there are
+	 * no comments, and empty array will be returned.
+	 * 
+	 * @param key key of value
+	 * @return document or section contains key
+	 */
+	String[] getKeyComments(String key);
+
+	/**
+	 * Set comments for the given key in this section or document. Just provide the
+	 * key alone to remove all comments.
+	 * 
+	 * @param key      key
+	 * @param comments comments
+	 * @return document or section contains key
+	 */
+	void setKeyComments(String key, String... comments);
     
     /**
      * Get whether this document or section contains a value (empty or otherwise).

@@ -79,7 +79,6 @@ public class INIWriterTest {
         assertEquals("Key1 = Val1,Val2,Val3,Val4"+ System.lineSeparator(), wrtr.write(ini));
     }
 
-
     @Test
     public void testCreateMultipleSameNamedSectrions() throws IOException, ParseException {
         var ini = INI.create();
@@ -91,7 +90,6 @@ public class INIWriterTest {
         
         var wtr = new INIWriter.Builder().
                 withEmptyValues(false).
-                withCommentCharacter('#').
                 withValueSeparatorWhitespace(false).
                 withIndent(0).
                 withStringQuoteMode(StringQuoteMode.NEVER).
@@ -103,6 +101,36 @@ public class INIWriterTest {
         		"[Section1]"  + System.lineSeparator() + 
         		"Key2=Val2" + System.lineSeparator() +
         		"Key3=Val3" + System.lineSeparator()
+        		, wtr.write(ini));
+    }
+
+    @Test
+    public void testSimpleComments() throws IOException, ParseException {
+        var ini = INI.create();
+        ini.setComments("This is the document comment");
+        var sec1a = ini.create("Section1");
+        sec1a.setComments("This is a couple of lines of", "comments for this section");
+        sec1a.put("Key1", "Val1");
+        var sec1b = ini.create("Section1");
+        sec1b.put("Key2", "Val2");
+        sec1b.setKeyComments("Key2", "And this is commments for a key,", "using default EOL");
+        sec1b.put("Key3", "Val3");
+        
+        var wtr = new INIWriter.Builder().
+                withEmptyValues(false).
+                withCommentCharacter('#').
+                withStringQuoteMode(StringQuoteMode.NEVER).
+                withMultiValueMode(MultiValueMode.SEPARATED).build();
+        
+        assertEquals(
+        		"# This is the document comment" + System.lineSeparator() +System.lineSeparator() +
+        		"# This is a couple of lines of" + System.lineSeparator() +
+        		"# comments for this section" + System.lineSeparator() +System.lineSeparator() +
+        		"[Section1]" + System.lineSeparator() +
+        		"  Key1 = Val1"  + System.lineSeparator() + System.lineSeparator() +
+        		"[Section1]"  + System.lineSeparator() + 
+        		"  Key2 = Val2 # And this is commments for a key, using default EOL" + System.lineSeparator() +
+        		"  Key3 = Val3" + System.lineSeparator()
         		, wtr.write(ini));
     }
 }

@@ -146,7 +146,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.5.3</version>
+    <version>0.5.4</version>
 </dependency>
 ```
 
@@ -345,6 +345,12 @@ There are a number of convenience methods, and a builder `INISchema.Builder` tha
 TODO
 
 ## Changes
+
+### 0.5.5-SNAPSHOT
+
+ * Initial support for handling comments. Comments arrays can be added to documents, sections and
+   keys. They are written back with `INIWriter`. There is not yet support for reading comments 
+   back in with `INIReader`.
 
 ### 0.5.4
 

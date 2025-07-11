@@ -37,6 +37,24 @@ import com.sshtools.jini.INIReader.MultiValueMode;
  * and configure it accordingly before calling {@link INIWriter.Builder#build()}.
  */
 public class INIWriter extends AbstractIO {
+	
+	/**
+	 * Where to place section and key comments
+	 */
+	public enum CommentPlacementMode {
+		/**
+		 * Always place section comments and key comments above the section key or first value 
+		 */
+		ALWAYS_ABOVE,
+		/**
+		 * Place section comments above the key, and key comments and the end of the line of the first value
+		 */
+		SECTIONS_ABOVE_KEYS_LINE_END,
+		/**
+		 * Always places section comments and key comments at the end of the line
+		 */
+		ALWAYS_LINE_END		
+	}
 
     /**
      * Use to configure when written string values are wrapped in quotes.
@@ -74,6 +92,19 @@ public class INIWriter extends AbstractIO {
         private boolean emptyValuesHaveSeparator = true;
         private int indent = 2;
         private char indentCharacter = ' ';
+        private CommentPlacementMode commentPlacementMode = CommentPlacementMode.SECTIONS_ABOVE_KEYS_LINE_END;
+        
+        /**
+         * Which {@link CommentPlacementMode} to use when writing comments associated with documents,
+         * sections or keys.
+         * 
+         *  @param commentPlacementMode comment placement mode
+         *  @return this for chaining
+         */
+        public Builder withCommentPlacementMode(CommentPlacementMode commentPlacementMode) {
+        	this.commentPlacementMode = commentPlacementMode;
+        	return this;
+        }
         
         /**
          * Which character to use for indenting. Only tab ('\t') and space (' ') is allowed.
@@ -152,12 +183,14 @@ public class INIWriter extends AbstractIO {
     private final char quoteCharacter;
     private final boolean emptyValuesHaveSeparator;
     private final String indent;
+    private final CommentPlacementMode commentPlacementMode;
 
     INIWriter(Builder builder) {
         super(builder);
         this.stringQuoteMode = builder.stringQuoteMode;
         this.quoteCharacter = builder.quoteCharacter;
         this.emptyValuesHaveSeparator = builder.emptyValuesHaveSeparator;
+        this.commentPlacementMode = builder.commentPlacementMode;
         
         var indnt = new StringBuilder();
         for(int i = 0 ; i < builder.indent; i++) 
@@ -208,12 +241,29 @@ public class INIWriter extends AbstractIO {
         var sections = document.sections();
         var path = new Stack<String>();
 
-        values.forEach((k, v) -> writeProperty(0, pw, k, v));
+        /* There is no key at the root so write comments above always */
+        printComments(0, document, pw);
+        
+        values.forEach((k, v) -> writeProperty(0, document.getKeyComments(k), pw, k, v));
 
         writeSections(0, pw, new AtomicBoolean(values.size() > 0), sections, path);
 
         pw.flush();
     }
+
+
+	private String commentsInLine(Data document) {
+		return String.format("%s %s", commentCharacter, String.join(" ", document.getComments()));
+	}
+	
+	private void printComments(int depth, Data document, PrintWriter pw) {
+		for(var comment : document.getComments()) {
+            pw.format("%s%s %s%n", indent(depth), commentCharacter, comment);
+        }
+        if(document.getComments().length > 0) {
+        	pw.format("%n");
+        }
+	}
 
     private void writeSections(int depth, PrintWriter pw, AtomicBoolean lf, Map<String, Section[]> sections, Stack<String> path) {
         if (sections.size() > 0) {
@@ -357,9 +407,15 @@ public class INIWriter extends AbstractIO {
             if (sections.length < 2) {
                 if(newline.get())
                     pw.println();
-                pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
+
                 if (sections.length == 1) {
-                    sections[0].rawValues().forEach((k, v) -> writeProperty(depth + 1, pw, k, v));
+                    printSectionHeader(depth, pw, path, sections[0]);
+                }
+                else {
+                	pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
+                }
+                if (sections.length == 1) {
+                    sections[0].rawValues().forEach((k, v) -> writeProperty(depth + 1, sections[0].getKeyComments(k), pw, k, v));
                     newline.set(true);
                     writeSections(depth + 1, pw, newline, sections[0].sections(), path);
                 }
@@ -367,9 +423,8 @@ public class INIWriter extends AbstractIO {
                 for (var sec : sections) {
                     if(newline.get())
                         pw.println();
-                    
-                    pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
-                	sec.rawValues().forEach((k, v) -> writeProperty(depth + 1, pw, k, v));
+                    printSectionHeader(depth, pw, path, sec);
+                	sec.rawValues().forEach((k, v) -> writeProperty(depth + 1, sec.getKeyComments(k), pw, k, v));
                     newline.set(true);
                     writeSections(depth + 1, pw, newline, sec.sections(), path);
                     
@@ -381,33 +436,56 @@ public class INIWriter extends AbstractIO {
         }
     }
 
-    private void writeProperty(int depth, PrintWriter pw, String key, String... values) {
+	private void printSectionHeader(int depth, PrintWriter pw, Stack<String> path, Section sec) {
+		if(commentPlacementMode != CommentPlacementMode.ALWAYS_LINE_END) {
+			printComments(depth, sec, pw);
+		}
+		if(commentPlacementMode == CommentPlacementMode.ALWAYS_LINE_END && sec.getComments().length > 0) {
+			pw.format("%s[%s] %s%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false), commentsInLine(sec));
+		}
+		else {
+			pw.format("%s[%s]%n", indent(depth), escape(String.join(String.valueOf(sectionPathSeparator), path), false));
+		}
+	}
+
+    private void writeProperty(int depth, String[] comments, PrintWriter pw, String key, String... values) {
+
+    	if(commentPlacementMode == CommentPlacementMode.ALWAYS_ABOVE && comments.length > 0) {
+    		for(var cmt : comments) {
+    			pw.format("%s%s %s%n", indent(depth), commentCharacter, cmt);
+    		}
+    	}
+    	
         if (values.length == 0) {
             if(emptyValues) {
                 pw.format("%s%s", indent(depth), escape(key, false));
                 if(emptyValuesHaveSeparator) {
                     if(valueSeparatorWhitespace) {
-                        pw.println(" = ");
+                        pw.print(" = ");
                     }
                     else {
-                        pw.println("=");
+                        pw.print("=");
                     }
                 }
-                else {
-                    pw.println();
-                }
+                if(commentPlacementMode != CommentPlacementMode.ALWAYS_ABOVE && comments.length > 0) {
+           			pw.format("%s %s", commentCharacter, String.join(" ", comments));
+            	}
+                pw.println();
             }
         } else if (values.length == 1) {
-            writeOneProperty(depth, pw, key, quote(depth, values[0]));
+            writeOneProperty(depth, comments, pw, key, quote(depth, values[0]));
         } else {
             if (multiValueMode == MultiValueMode.REPEATED_KEY) {
-                for (var v : values)
-                    writeProperty(depth, pw, key, v);
+            	var idx = 0;
+                for (var v : values) {
+                    writeProperty(depth, idx == 0 ? comments : new String[0], pw, key, v);
+                    idx++;
+                }
             } else {
                 if (trimmedValue)
-                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(depth, values)));
+                    writeOneProperty(depth, comments, pw, key, String.join(String.valueOf(multiValueSeparator) + " ", quote(depth, values)));
                 else
-                    writeOneProperty(depth, pw, key, String.join(String.valueOf(multiValueSeparator), quote(depth, values)));
+                    writeOneProperty(depth, comments, pw, key, String.join(String.valueOf(multiValueSeparator), quote(depth, values)));
             }
         }
     }
@@ -419,11 +497,19 @@ public class INIWriter extends AbstractIO {
     	return b.toString();
     }
 
-    private void writeOneProperty(int depth, PrintWriter pw, String key, String value) {
-        if (valueSeparatorWhitespace)
-            pw.println(String.format("%s%s %s %s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
-        else
-            pw.println(String.format("%s%s%s%s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
+    private void writeOneProperty(int depth,  String[] comments, PrintWriter pw, String key, String value) {
+    	if(commentPlacementMode != CommentPlacementMode.ALWAYS_ABOVE && comments.length > 0) {
+	        if (valueSeparatorWhitespace)
+	            pw.println(String.format("%s%s %s %s %s %s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value, commentCharacter, String.join(" ", comments)));
+	        else
+	            pw.println(String.format("%s%s%s%s %s %s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value, commentCharacter, String.join(" ", comments) ));
+    	}
+    	else {
+	        if (valueSeparatorWhitespace)
+	            pw.println(String.format("%s%s %s %s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
+	        else
+	            pw.println(String.format("%s%s%s%s", indent(depth), escape(key, false), Character.valueOf(valueSeparator), value));
+    	}
     }
 
 }
