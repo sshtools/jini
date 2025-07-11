@@ -53,16 +53,6 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh-sshtools</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh-sshtools</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
     <scm>
         <url>https://github.com/sshtools/jini</url>
         <connection>scm:git:https://github.com/sshtools/jini.git</connection>
@@ -84,6 +74,10 @@
     </dependencies>
     <build>
         <plugins>
+		 	<plugin>
+          		<groupId>org.sonatype.central</groupId>
+          		<artifactId>central-publishing-maven-plugin</artifactId>
+        	</plugin>
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>properties-maven-plugin</artifactId>
@@ -153,6 +147,15 @@
         </plugins>
         <pluginManagement>
             <plugins>
+			 	<plugin>
+	          		<groupId>org.sonatype.central</groupId>
+	          		<artifactId>central-publishing-maven-plugin</artifactId>
+	          		<version>0.8.0</version>
+	          		<extensions>true</extensions>
+	          		<configuration>
+	            		<publishingServerId>central-sshtools</publishingServerId>
+	          		</configuration>
+	        	</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>properties-maven-plugin</artifactId>
@@ -264,17 +267,6 @@
                         </execution>
                     </executions>
                 </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>1.6.13</version>
-                    <extensions>true</extensions>
-                    <configuration>
-                        <serverId>ossrh-sshtools</serverId>
-                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                        <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                    </configuration>
-                </plugin>
             </plugins>
         </pluginManagement>
     </build>
@@ -302,10 +294,10 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                    </plugin>
+					<plugin>
+		          		<groupId>org.sonatype.central</groupId>
+		          		<artifactId>central-publishing-maven-plugin</artifactId>
+			        </plugin>
                 </plugins>
             </build>
         </profile>
