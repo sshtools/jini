@@ -822,7 +822,7 @@ public final class INIReader extends AbstractIO {
 	                }
 	            } else if(!multiline) {
 
-					setCommentsForKey(nextComments, section, key, inlineComment);
+					setCommentsForKey(nextComments, section == null ? (globalSection ? ini : null) : section, key, inlineComment);
 					
 	                var val = buf.toString();
 	                buf.setLength(0);
@@ -1009,7 +1009,7 @@ public final class INIReader extends AbstractIO {
 	}
 
 	private void setCommentsForSection(List<String> nextComments, Data newSection, StringBuilder inlineComments) {
-		if(nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0))
+		if(newSection == null || ( nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0)))
 			return;
 		
 		newSection.setComments(getAllComments(nextComments, inlineComments).toArray(new String[0]));
@@ -1030,7 +1030,7 @@ public final class INIReader extends AbstractIO {
 
 
 	private void setCommentsForKey(List<String> nextComments, Data section, String key, StringBuilder inlineComments) {
-		if(nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0))
+		if(section == null || ( nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0)))
 			return;
 		
 		section.setKeyComments(key, getAllComments(nextComments, inlineComments).toArray(new String[0]));
