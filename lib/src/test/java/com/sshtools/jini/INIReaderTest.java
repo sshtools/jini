@@ -514,5 +514,30 @@ public final class INIReaderTest {
         assertEquals("Val 2", ini.get("Key 2"));
     }    
 
+    
+    @Test
+    public void testReadAllCommentTypes() throws IOException, ParseException {
+        var ini = new INIReader.Builder().
+                build().read(
+                		"; This is a 2 line document comment, as it has a blank line\n" +
+                		"; before the first section or key\n" +
+                		"\n" +
+                		"; This is the first section comment\n" +
+                        "[Section1]\n" +
+                		"; A comment for the key\n" +
+                        "A = B\n" +
+                		"; This is the second section comment\n" +
+                        "[Section1] ; that has an inline comment too\n" +
+                        "A = B ; and an inline comment for the key\n"  +
+                        "[Section1] ; and this one only has an inline comment\n"  +
+                        "A = B\n"); 
+        assertArrayEquals(new String[] { "This is a 2 line document comment, as it has a blank line", "before the first section or key" }, ini.getComments());
+        var sec1 = ini.allSections("Section1");
+        assertArrayEquals(new String[] { "This is the first section comment" }, sec1[0].getComments());
+        assertArrayEquals(new String[] { "A comment for the key" }, sec1[0].getKeyComments("A"));
+        assertArrayEquals(new String[] { "This is the second section comment", "that has an inline comment too" }, sec1[1].getComments());
+        assertArrayEquals(new String[] { "and an inline comment for the key" }, sec1[1].getKeyComments("A"));
+        assertArrayEquals(new String[] { "and this one only has an inline comment" }, sec1[2].getComments());
+    }
    
 }

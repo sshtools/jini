@@ -642,7 +642,7 @@ public final class INISet implements Closeable {
 	}
 
 	public static Path getDefaultPathForScope(Scope scope) {
-		if (isLinux()) {
+		if (isLinux() || isMacOs()) {
 			switch (scope) {
 			case GLOBAL:
 				return Paths.get("/etc");
@@ -679,6 +679,10 @@ public final class INISet implements Closeable {
 
 	private static boolean isWindows() {
 		return os.contains("windows");
+	}
+
+	private static boolean isMacOs() {
+		return os.contains("mac os");
 	}
 
 	public Path appPathForScope(Scope scope) {

@@ -25,8 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringTokenizer;
@@ -34,8 +36,8 @@ import java.util.TreeMap;
 
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
-import com.sshtools.jini.INI.EscapeMode;
 import com.sshtools.jini.INI.DefaultINI;
+import com.sshtools.jini.INI.EscapeMode;
 import com.sshtools.jini.INI.LinkedCaseInsensitiveMap;
 import com.sshtools.jini.INI.MissingVariableMode;
 import com.sshtools.jini.INI.Section;
@@ -522,6 +524,8 @@ public final class INIReader extends AbstractIO {
         String readAhead = null;
         String key = null;
         var buf = new StringBuilder();
+        var nextComments = new ArrayList<String>();
+        var pastFirstBlank = false;
         
         while ((line = lineReader.readLine()) != null) {
         	if(!multiline) {
@@ -545,14 +549,26 @@ public final class INIReader extends AbstractIO {
             }
 
             lineBuffer.append(line);
-            if (lineBuffer.length() == 0)
+            if (lineBuffer.length() == 0) {
+            	pastFirstBlank = checkPastFirstBlank(section, ini, nextComments, pastFirstBlank);
                 continue;
+            }
 
             var fullLine = lineBuffer.toString();
             lineBuffer.setLength(0);
             var lineWithoutLeading = fullLine.stripLeading();
 
-            if (!multiline && (lineWithoutLeading.length() == 0 || ( comments &&  lineWithoutLeading.charAt(0) == commentCharacter))) {
+            if (!multiline && (lineWithoutLeading.length() == 0)) {
+            	pastFirstBlank = checkPastFirstBlank(section, ini, nextComments, pastFirstBlank);
+            	continue;
+            }
+            
+            if( comments &&  lineWithoutLeading.charAt(0) == commentCharacter) {
+            	var ln = fullLine.trim();
+            	while(ln.startsWith(String.valueOf(commentCharacter))) {
+            		ln = ln.substring(1);
+            	}
+            	nextComments.add(ln.trim());
             	continue;
             }
 
@@ -562,6 +578,7 @@ public final class INIReader extends AbstractIO {
             var column = 0; 
             var skipToNext = false;
             var bufSizeAtStartOfLine = buf.length();
+            var inlineComment = new StringBuilder();
             
             while(column < lineChars.length) {
 	            for (; column < lineChars.length; column++) {
@@ -676,7 +693,11 @@ public final class INIReader extends AbstractIO {
 		                        	else if (isQuote(ch)) {
 		                                quoted = ch;
 		                            } else if (ch == commentCharacter && comments && inlineComments) {
-	                            		column = lineChars.length;
+		                            	inlineComment.setLength(0);
+		                            	column++;
+		                            	while(column < lineChars.length) {
+		                            		inlineComment.append(lineChars[column++]);
+		                            	}
 		                                break;
 		                            } else if (key == null) {
 		                                if (ch == valueSeparator) {
@@ -754,6 +775,7 @@ public final class INIReader extends AbstractIO {
 	                        if (last) {
 								var newSection = new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys, caseSensitiveSections,
 	                                    parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
+								setCommentsForSection(nextComments, newSection, inlineComment);
 	                            if (sectionsForKey == null) {
 	                                /* Doesn't exist, just add */
 	                                sectionsForKey = new Section[] { newSection };
@@ -787,8 +809,10 @@ public final class INIReader extends AbstractIO {
 	                            if (sectionsForKey == null) {
 	                            	
 	                                /* Doesn't exist, just add */
-	                                sectionsForKey = new Section[] { new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys,
-	                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode) };
+	                            	var newSection = new SectionImpl(emptyValues, preserveOrder, caseSensitiveKeys,
+	                                        caseSensitiveSections, parentSection, sectionKey, interpolator, variablePattern, missingVariableMode);
+									setCommentsForSection(nextComments, newSection, inlineComment);
+	                                sectionsForKey = new Section[] { newSection };
 	                                parent.put(sectionKey, sectionsForKey);
 	                            }
 	                        }
@@ -797,6 +821,9 @@ public final class INIReader extends AbstractIO {
 	                    }
 	                }
 	            } else if(!multiline) {
+
+					setCommentsForKey(nextComments, section, key, inlineComment);
+					
 	                var val = buf.toString();
 	                buf.setLength(0);
 	                if (val.isEmpty() && !emptyValues) {
@@ -967,6 +994,47 @@ public final class INIReader extends AbstractIO {
         }
         return sb.toString();
     }
+
+	private boolean checkPastFirstBlank(SectionImpl section, DefaultINI ini, ArrayList<String> nextComments,
+			boolean pastFirstBlank) {
+		if(!pastFirstBlank) {
+			if(nextComments.size() > 0) {
+		        if (section == null && globalSection) {
+		        	setCommentsForSection(nextComments, ini, null);;
+		        } 
+			}
+			pastFirstBlank = true;	
+		}
+		return pastFirstBlank;
+	}
+
+	private void setCommentsForSection(List<String> nextComments, Data newSection, StringBuilder inlineComments) {
+		if(nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0))
+			return;
+		
+		newSection.setComments(getAllComments(nextComments, inlineComments).toArray(new String[0]));
+	}
+
+	private ArrayList<String> getAllComments(List<String> nextComments, StringBuilder inlineComments) {
+		var allComments = new ArrayList<String>(nextComments);
+		if(inlineComments != null && inlineComments.length() > 0) {
+			var trimmed = inlineComments.toString().trim();
+			if(trimmed.length() > 0) {
+				allComments.add(trimmed);
+			}
+			inlineComments.setLength(0);
+		}
+		nextComments.clear();
+		return allComments;
+	}
+
+
+	private void setCommentsForKey(List<String> nextComments, Data section, String key, StringBuilder inlineComments) {
+		if(nextComments.isEmpty() && (inlineComments == null || inlineComments.length() == 0))
+			return;
+		
+		section.setKeyComments(key, getAllComments(nextComments, inlineComments).toArray(new String[0]));
+	}
 
     boolean isLineContinuation(String line) {
         var contCount = 0;

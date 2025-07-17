@@ -346,11 +346,11 @@ TODO
 
 ## Changes
 
-### 0.5.5-SNAPSHOT
+### 0.5.5
 
  * Initial support for handling comments. Comments arrays can be added to documents, sections and
-   keys. They are written back with `INIWriter`. There is not yet support for reading comments 
-   back in with `INIReader`.
+   keys. They can be read with `INIReader` and are written back with `INIWriter`.
+ * Mac OS is now treated same as Linux for `jini-configuration` default locations (i.e. user config in `$HOME/.config/<app>`).
 
 ### 0.5.4
 
