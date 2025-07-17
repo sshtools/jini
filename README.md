@@ -43,7 +43,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.5.3</version>
+    <version>0.5.5</version>
 </dependency>
 ```
 
