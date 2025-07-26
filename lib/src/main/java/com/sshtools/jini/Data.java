@@ -194,9 +194,14 @@ public interface Data {
 
 		@Override
 		public void setComments(String... comments) {
+			setComments(Arrays.asList(comments));
+		}
+
+		@Override
+		public void setComments(List<String> comments) {
 			synchronized(this.comments) {
 				this.comments.clear();
-				this.comments.addAll(Arrays.asList(comments));
+				this.comments.addAll(comments);
 			}
 		}
 
@@ -208,6 +213,11 @@ public interface Data {
 		@Override
 		public void setKeyComments(String key, String... comments) {
 			keyComments.put(key, comments);
+		}
+
+		@Override
+		public void setKeyComments(String key, List<String> comments) {
+			setKeyComments(key, comments.toArray(new String[0]));
 		}
 
 		@Override
@@ -586,27 +596,31 @@ public interface Data {
     
 	/**
 	 * Get any comments for this section or document.
-	 * 
-	 * @param key key of value
-	 * @return document or section contains key
+	 *
+	 * @return comments on this document or section
 	 */
 	String[] getComments();
 
 	/**
-	 * Set comments for this section or document. Just provide the key alone to
-	 * remove all comments.
+	 * Set comments for this section or document. Provide an empty array to remove all comments.
 	 * 
-	 * @param comments comments
-	 * @return document or section contains key
+	 * @param comments comments, with each string being a new line
 	 */
 	void setComments(String... comments);
 
 	/**
+	 * Set comments for this section or document. Provide an empty list to remove all comments.
+	 *
+	 * @param comments comments, with each string being a new line
+	 */
+	void setComments(List<String> comments);
+
+	/**
 	 * Get any comments for the given key in this section or document. If there are
-	 * no comments, and empty array will be returned.
+	 * no comments, an empty array will be returned.
 	 * 
 	 * @param key key of value
-	 * @return document or section contains key
+	 * @return the comments on the key
 	 */
 	String[] getKeyComments(String key);
 
@@ -615,12 +629,20 @@ public interface Data {
 	 * key alone to remove all comments.
 	 * 
 	 * @param key      key
-	 * @param comments comments
-	 * @return document or section contains key
+	 * @param comments comments, with each string being a new line
 	 */
 	void setKeyComments(String key, String... comments);
-    
-    /**
+
+	/**
+	 * Set comments for the given key in this section or document. Provide an empty list
+	 * to remove all comments.
+	 *
+	 * @param key      key
+	 * @param comments comments, with each string being a new line
+	 */
+	void setKeyComments(String key, List<String> comments);
+
+	/**
      * Get whether this document or section contains a value (empty or otherwise).
      * 
      * @param key key of value
