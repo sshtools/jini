@@ -743,13 +743,15 @@ public final class INIReader extends AbstractIO {
 	                var eidx = key.indexOf(']', 1);
 	                if (eidx == -1) {
 	                    if (parseExceptions) {
-	                        throw new ParseException("Incorrect syntax for section name, no closing ']'.", offset);
+	                        throw new INIParseException(
+                                    "Incorrect syntax for section name, no closing ']'.", offset, lineNo);
 	                    }
 	                } else {
 	                    if (eidx != key.length() - 1) {
 	                        if (parseExceptions) {
-	                            throw new ParseException(
-	                                    "Incorrect syntax for section name, trailing content after closing ']'.", offset);
+	                            throw new INIParseException(
+	                                    "Incorrect syntax for section name, trailing content after closing ']'.",
+                                        offset, lineNo);
 	                        } else
 	                            continue;
 	                    }
@@ -783,8 +785,9 @@ public final class INIReader extends AbstractIO {
 	                            } else {
 	                                switch (duplicateSectionAction) {
 	                                case ABORT:
-	                                    throw new ParseException(
-	                                            MessageFormat.format("Duplicate section key {0}.", sectionKey), offset);
+	                                    throw new INIParseException(
+	                                            MessageFormat.format("Duplicate section key {0}.", sectionKey),
+                                                offset, lineNo);
 	                                case REPLACE:
 	                                    sectionsForKey = new Section[] { newSection };
 	                                    parent.put(sectionKey, sectionsForKey);
@@ -828,7 +831,7 @@ public final class INIReader extends AbstractIO {
 	                buf.setLength(0);
 	                if (val.isEmpty() && !emptyValues) {
 	                    if (parseExceptions)
-	                        throw new ParseException("Empty values are not allowed.", offset);
+	                        throw new INIParseException("Empty values are not allowed.", offset, lineNo);
 	                } else {
 	                    if (trimmedValue) {
 	                        val = val.trim();
@@ -842,9 +845,9 @@ public final class INIReader extends AbstractIO {
 	                            sectionProperties = globalProperties;
 	                        } else {
 	                            if (parseExceptions)
-	                                throw new ParseException(
+	                                throw new INIParseException(
 	                                        "Global properties are not allowed, all properties must be in a [Section].",
-	                                        offset);
+	                                        offset, lineNo);
 	                            else
 	                                continue;
 	                        }
@@ -876,7 +879,8 @@ public final class INIReader extends AbstractIO {
 	                    } else {
 	                        switch (duplicateKeysAction) {
 	                        case ABORT:
-	                            throw new ParseException(MessageFormat.format("Duplicate property key {0}.", key), offset);
+	                            throw new INIParseException(
+                                        MessageFormat.format("Duplicate property key {0}.", key), offset, lineNo);
 	                        case IGNORE:
 		                        lastAppendedLine = -1;
 	                            continue;
