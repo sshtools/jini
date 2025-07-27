@@ -568,7 +568,7 @@ public interface INI extends Data {
          * @return this for chaining
 		 */
 		@SuppressWarnings("unchecked")
-		public B withtLineSeparator(String lineSeperator) {
+		public B withLineSeparator(String lineSeperator) {
         	this.lineSeparator = lineSeperator;
         	return (B)this;
         }
