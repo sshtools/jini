@@ -146,7 +146,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.5.4</version>
+    <version>0.5.5</version>
 </dependency>
 ```
 
@@ -206,7 +206,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.5.3</version>
+    <version>0.5.5</version>
 </dependency>
 ```
 
@@ -344,7 +344,18 @@ There are a number of convenience methods, and a builder `INISchema.Builder` tha
 
 TODO
 
+## Credits
+
+Thanks to others who have contributed to Jini.
+
+ * [A248](https://github.com/A248)
+
 ## Changes
+
+### 0.5.6
+
+ * Allow comments to be set from `List<String>` as well as string arrays.
+ * Typo in the build `withtLineSeparator()` should read `withLineSeparator()`.
 
 ### 0.5.5
 
