@@ -24,7 +24,6 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -64,8 +63,8 @@ public final class INIReader extends AbstractIO {
      */
     public enum DuplicateAction {
         /**
-         * When a duplicate value key or section key is encountered, a
-         * {@link ParseException} will be thrown. With this mode no keys can have
+         * When a duplicate value key or section key is encountered, an
+         * {@link INIParseException} will be thrown. With this mode no keys can have
          * multiple values.
          */
         ABORT,
@@ -191,7 +190,7 @@ public final class INIReader extends AbstractIO {
         }
 
         /**
-         * Do not throw {@link ParseException} when invalid syntax is found when parsing
+         * Do not throw {@link INIParseException} when invalid syntax is found when parsing
          * an INI document. In general the line will just be ignored and treated as if
          * it were a comment.
          * 
@@ -202,7 +201,7 @@ public final class INIReader extends AbstractIO {
         }
 
         /**
-         * Configure whether to throw {@link ParseException} when invalid syntax is
+         * Configure whether to throw {@link INIParseException} when invalid syntax is
          * found when parsing an INI document. In general the line will just be ignored
          * and treated as if it were a comment.
          * 
@@ -449,9 +448,9 @@ public final class INIReader extends AbstractIO {
      * @param file file containing INI
      * @return document
      * @throws IOException    on I/O error
-     * @throws ParseException on parsing error
+     * @throws INIParseException on parsing error
      */
-    public INI read(Path file) throws IOException, ParseException {
+    public INI read(Path file) throws IOException, INIParseException {
         try (var rdr = Files.newBufferedReader(file)) {
             return read(rdr);
         }
@@ -463,9 +462,9 @@ public final class INIReader extends AbstractIO {
      * @param content string of INI content
      * @return document
      * @throws IOException    on I/O error
-     * @throws ParseException on parsing error
+     * @throws INIParseException on parsing error
      */
-    public INI read(String content) throws IOException, ParseException {
+    public INI read(String content) throws IOException, INIParseException {
         try (var rdr = new StringReader(content)) {
             return read(rdr);
         }
@@ -478,9 +477,9 @@ public final class INIReader extends AbstractIO {
      * @param input stream of INI content
      * @return document
      * @throws IOException    on I/O error
-     * @throws ParseException on parsing error
+     * @throws INIParseException on parsing error
      */
-    public INI read(InputStream input) throws IOException, ParseException {
+    public INI read(InputStream input) throws IOException, INIParseException {
     	return read(new InputStreamReader(input));
     }
     
@@ -492,9 +491,9 @@ public final class INIReader extends AbstractIO {
      * @param charset character set
      * @return document
      * @throws IOException    on I/O error
-     * @throws ParseException on parsing error
+     * @throws INIParseException on parsing error
      */
-    public INI read(InputStream input, String charset) throws IOException, ParseException {
+    public INI read(InputStream input, String charset) throws IOException, INIParseException {
     	return read(new InputStreamReader(input, charset));
     }
 
@@ -505,9 +504,9 @@ public final class INIReader extends AbstractIO {
      * @param reader reader providing stream of INI content
      * @return document
      * @throws IOException    on I/O error
-     * @throws ParseException on parsing error
+     * @throws INIParseException on parsing error
      */
-    public INI read(Reader reader) throws IOException, ParseException {
+    public INI read(Reader reader) throws IOException, INIParseException {
         String line;
         var lineReader = new BufferedReader(reader);
         var lineBuffer = new StringBuilder();

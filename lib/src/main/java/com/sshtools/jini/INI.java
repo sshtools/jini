@@ -26,7 +26,6 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.text.MessageFormat;
-import java.text.ParseException;
 import java.util.AbstractCollection;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -469,7 +468,7 @@ public interface INI extends Data {
             return new INIReader.Builder().build().read(reader);
         } catch (IOException ioe) {
             throw new UncheckedIOException(ioe);
-        } catch (ParseException e) {
+        } catch (INIParseException e) {
             throw new IllegalStateException("Failed to parse.", e);
         }
     }
@@ -487,7 +486,7 @@ public interface INI extends Data {
             return new INIReader.Builder().build().read(new InputStreamReader(in));
         } catch (IOException ioe) {
             throw new UncheckedIOException(ioe);
-        } catch (ParseException e) {
+        } catch (INIParseException e) {
             throw new IllegalStateException("Failed to parse.", e);
         }
     }
