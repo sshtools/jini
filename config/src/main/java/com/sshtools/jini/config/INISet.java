@@ -139,6 +139,16 @@ public final class INISet implements Closeable {
 		}
 
 		@Override
+		public void setComments(List<String> comments) {
+			delegate.setComments(comments);
+		}
+
+		@Override
+		public void setKeyComments(String key, List<String> comments) {
+			delegate.setKeyComments(key, comments);
+		}
+
+		@Override
 		public final Optional<String[]> getAllOr(String key) {
 			var path = path();
 			if(path.length > 0 && systemPropertyOverrides) {

@@ -319,6 +319,16 @@ public class INISchema {
 			return mgr;
 		}
 
+		@Override
+		public void setComments(List<String> comments) {
+			delegate.setComments(comments);
+		}
+
+		@Override
+		public void setKeyComments(String key, List<String> comments) {
+			delegate.setKeyComments(key, comments);
+		}
+
 		private void addSchemaSections(HashMap<String, Section[]> mgr, String... path) {
 			userObject.sectionOr(this, path).ifPresent(sd -> {
 				if(path.length == 0) {
