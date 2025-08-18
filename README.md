@@ -354,6 +354,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.0
+
+ * `INIParseException` now used instead of `ParseException` that carries that line number as well. Existing code using ParseException should be fine. Thanks [A248](https://github.com/A248) for #3.
+
 ### 0.5.6
 
  * Allow comments to be set from `List<String>` as well as string arrays.
