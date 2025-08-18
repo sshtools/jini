@@ -276,7 +276,10 @@ public class INIWriter extends AbstractIO {
     private String quote(int depth, String value) {
         switch (stringQuoteMode) {
         case NEVER:
-            return escape(value, false);
+        	if(lineContinuations)
+        		return lineContinuations(depth,value,  true);
+        	else
+        		return escape(value, false);
         case ALWAYS:
             break;
         case SPECIAL:
@@ -297,7 +300,7 @@ public class INIWriter extends AbstractIO {
         			INI.createMultilineQuote(quoteCharacter);
         }
         else {
-        	return quoteCharacter + lineContinuations(depth, escape(value, true)) + quoteCharacter;
+        	return quoteCharacter + lineContinuations(depth, escape(value, true), false) + quoteCharacter;
         }
     } 
     
@@ -340,7 +343,7 @@ public class INIWriter extends AbstractIO {
 		}
 	}
     
-    private String lineContinuations(int depth, String value) {
+    private String lineContinuations(int depth, String value, boolean escape) {
     	var lines = value.split(INI.escapeLineSeparators(lineSeparator));
     	if(lines.length > 1) {
     		var buf = new StringBuilder();
@@ -351,7 +354,11 @@ public class INIWriter extends AbstractIO {
     				buf.append(lineSeparator);
     				indentToDepth(depth, buf);
     			}
-    			buf.append(lines[i]);
+    			
+    			if(escape)
+        			buf.append(escape(lines[i], false));
+    			else
+    				buf.append(lines[i]);
     		}
     		return buf.toString();
     	}

@@ -22,6 +22,7 @@ import java.text.ParseException;
 
 import org.junit.jupiter.api.Test;
 
+import com.sshtools.jini.INI.EscapeMode;
 import com.sshtools.jini.INIReader.DuplicateAction;
 import com.sshtools.jini.INIReader.MultiValueMode;
 import com.sshtools.jini.INIWriter.StringQuoteMode;
@@ -132,5 +133,26 @@ public class INIWriterTest {
         		"  Key2 = Val2 # And this is commments for a key, using default EOL" + System.lineSeparator() +
         		"  Key3 = Val3" + System.lineSeparator()
         		, wtr.write(ini));
+    }
+
+    @Test
+    public void testStringSpanningLines() throws IOException, ParseException {
+    	 var ini = INI.create();
+    	 ini.put("AVal", "A value that spans"  + System.lineSeparator() + "more than one" + System.lineSeparator() + "line");
+    	 var wtr = new INIWriter.Builder().
+	                withEmptyValues(false).
+	                withCommentCharacter('#').
+	                withValueSeparatorWhitespace(false).
+	                withIndent(0).
+	                withEscapeMode(EscapeMode.ALWAYS).
+	                withStringQuoteMode(StringQuoteMode.NEVER).
+	                withoutMultilineStrings().
+	                withMultiValueMode(MultiValueMode.SEPARATED).build();
+    	 
+
+         assertEquals("AVal=A value that spans\\n\\" + System.lineSeparator()
+         		+ "more than one\\n\\" + System.lineSeparator()
+         		+ "line" + System.lineSeparator()
+         		+ "", wtr.write(ini));
     }
 }

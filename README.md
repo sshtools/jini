@@ -23,6 +23,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * JPMS compliant.
  * String interpolation with configurable variable pattern.
  * Requires JDK 11 or above (JDK 17 for tests).
+ * Supports comments.
  
 ## Optional Modules
 
@@ -34,6 +35,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
 ## WIP
 
  * Tests (see above badge for current coverage)
+ * `jini-schema` current just returns a document that always complies with the schema, there are currently no validation or generation tools (planned).
  
 ## Installation
 
@@ -356,6 +358,7 @@ Thanks to others who have contributed to Jini.
 
  * Allow comments to be set from `List<String>` as well as string arrays.
  * Typo in the build `withtLineSeparator()` should read `withLineSeparator()`.
+ * Certain `EscapeMode` would not work with line continuations.
 
 ### 0.5.5
 
