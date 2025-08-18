@@ -356,7 +356,7 @@ Thanks to others who have contributed to Jini.
 
 ### 0.6.0
 
- * `INIParseException` now used instead of `ParseException` that carries that line number as well. Existing code using ParseException should be fine. Thanks [A248](https://github.com/A248) for #3.
+ * `INIParseException` now used instead of `ParseException` that carries that line number as well. Existing code using ParseException should be fine. Thanks [A248](https://github.com/A248) for [PR #3](https://github.com/sshtools/jini/pull/3).
 
 ### 0.5.6
 
