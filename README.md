@@ -148,7 +148,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.5.5</version>
+    <version>0.5.6</version>
 </dependency>
 ```
 
@@ -208,7 +208,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.5.5</version>
+    <version>0.5.6</version>
 </dependency>
 ```
 
