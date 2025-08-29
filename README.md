@@ -344,7 +344,38 @@ There are a number of convenience methods, and a builder `INISchema.Builder` tha
 
 ## Configuration
 
-TODO
+The `jini-config` module provides a small framework for dealing with a common pattern you might use in many applications. If any of the following are true, this module may be for you.
+
+ * Your application requires some kind of configuration that can be broken up into multiple files.
+ * You want to provide a public known location where other applications (or users) might add configuration that you can read ("Drop-in" configuration directories).
+ * You want to monitor external changes to configuration, and have it reload automatically.
+ * Your applications provides default configuration in system configuration directories, but you want to allow the user to override (some?) of them per-user.
+ * You don't want to worry yourself with where to store your configuration files, you want them placed in the correct locations for the current operation system.
+ 
+While `jini-config` depends on `jini-schema` (you must always at least include it), you do not have to use a schema, although it is highly recommended you use one.
+
+The module centres around an `INISet`. This represents a set of configuration files of a particular *Name* for a particular *Application*. A single *Application* may have many `INISet`s each with a different *Name*. While supported, it is not really recommended to use multiple named applications in the same physical application.
+
+### Simple Example
+
+`INISet` is obtained using `INISet.Builder`. The constructor for this 
+
+```java
+
+// Make the config set
+var set =  new INISet.Builder("bookmarks").
+    withApp("my-file-browser").
+    withScopes(Scope.USER).
+    build();
+    
+// Set a value in the document
+var ini = set.document();
+ini.put("bookmark1", "https://jadaptive.com");
+    
+```
+
+After running this code, if you were to look in `$HOME\.config\my-file-browser` (on Linux or Mac OS), or `%HOME%\AppData\Roaming\my-file-browser` (on Windows), you would see a `bookmarks.ini` file you a single value in it.
+
 
 ## Credits
 
@@ -357,6 +388,7 @@ Thanks to others who have contributed to Jini.
 ### 0.6.0
 
  * `INIParseException` now used instead of `ParseException` that carries that line number as well. Existing code using ParseException should be fine. Thanks [A248](https://github.com/A248) for [PR #3](https://github.com/sshtools/jini/pull/3).
+ * Single-line string value would not be escaped with some `INIWriter` configurations.
 
 ### 0.5.6
 
