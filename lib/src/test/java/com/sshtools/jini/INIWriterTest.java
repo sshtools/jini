@@ -136,6 +136,16 @@ public class INIWriterTest {
     }
 
     @Test
+    public void testBackslashesInSingleLine() throws IOException, ParseException {
+    	var ini = INI.create();
+	   	ini.put("AVal", "C:\\Window\\Path\\To\\Something");
+	   	var wtr = new INIWriter.Builder().
+		                withEscapeMode(EscapeMode.ALWAYS).
+		                withStringQuoteMode(StringQuoteMode.NEVER).build();
+        assertEquals("AVal = C:\\\\Window\\\\Path\\\\To\\\\Something" + System.lineSeparator(), wtr.write(ini));
+    }
+
+    @Test
     public void testStringSpanningLines() throws IOException, ParseException {
     	 var ini = INI.create();
     	 ini.put("AVal", "A value that spans"  + System.lineSeparator() + "more than one" + System.lineSeparator() + "line");

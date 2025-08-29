@@ -363,7 +363,7 @@ public class INIWriter extends AbstractIO {
     		return buf.toString();
     	}
     	else
-    		return value;
+    		return escape(value, false);
     }
 
     private boolean needsAutoQuote(String value) {
