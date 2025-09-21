@@ -47,6 +47,19 @@ import com.sshtools.jini.INIWriter;
 import com.sshtools.jini.WrappedINI;
 
 public class INISchema {
+	
+	public interface Attributed {
+		Map<String, String[]> attributes();
+		
+		default Optional<String> attributeOr(String key) {
+			var val = attributes().get(key);
+			return val == null || val.length == 0 ? Optional.empty() : Optional.of(val[0]);
+		}
+		
+		default String attribute(String key) {
+			return attributeOr(key).orElseThrow(() -> new IllegalArgumentException("No attribute with key " + key));
+		}
+	}
 
 	public final static class Builder {
 		private INI ini;
@@ -88,7 +101,7 @@ public class INISchema {
 
 	}
 
-	public final static class KeyDescriptor {
+	public final static class KeyDescriptor implements Attributed {
 		private final Multiplicity multiplicity;
 		private final String[] defaultValues;
 		private final Optional<String> description;
@@ -119,6 +132,7 @@ public class INISchema {
 			this.attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
 		}
 		
+		@Override
 		public Map<String, String[]> attributes() {
 			return attributes;
 		}
@@ -168,7 +182,7 @@ public class INISchema {
 		}
 	}
 
-	public final static class SectionDescriptor {
+	public final static class SectionDescriptor  implements Attributed {
 		private final Multiplicity multiplicity;
 		private final Optional<String> description;
 		private final String key;
@@ -201,6 +215,7 @@ public class INISchema {
 			this.attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
 		}
 		
+		@Override
 		public Map<String, String[]> attributes() {
 			return attributes;
 		}
@@ -510,7 +525,7 @@ public class INISchema {
 
 	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
 	public static final String SCHEMA_ITEM_NAME = "name";
-	public static final String SCHEMA_SECTION_ATTRIBUTES = "attributes";
+	public static final String SCHEMA_SECTION_ATTRIBUTES = "x:attributes";
 
 	@Deprecated
 	private static final String SCHEMA_ITEM_ARITY = "arity";
