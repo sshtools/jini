@@ -385,6 +385,12 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.1
+
+ * Generic attributes can be added to schema items. Use `attributes()` in `KeyDescriptor` and `SectionDescriptor`. Add a section `[<item-name>.attributes]` with 
+   arbitrary keys. Recommend using colon notation for keys, and prefix with the `x:` key,
+   e.g. `x:prefererred-presentation`. 
+
 ### 0.6.0
 
  * `INIParseException` now used instead of `ParseException` that carries that line number as well. Existing code using ParseException should be fine. Thanks [A248](https://github.com/A248) for [PR #3](https://github.com/sshtools/jini/pull/3).

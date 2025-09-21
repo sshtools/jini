@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -96,9 +97,11 @@ public class INISchema {
 		private final String name;
 		private final Type type;
 		private final Optional<String[]> values;
+		private final Map<String, String[]> attributes;
 
 		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
-				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> multiplicity) {
+				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> multiplicity,
+				Map<String, String[]> attributes) {
 			super();
 			if(type.equals(Type.SECTION)) {
 				throw new IllegalArgumentException("Key may not be of type " + Type.SECTION);
@@ -113,6 +116,11 @@ public class INISchema {
 			this.multiplicity = multiplicity.orElseGet(() ->
 				defaultValues.length == 0 ? Multiplicity.ONE : Multiplicity.NO_MORE_THAN_ONE
 			);
+			this.attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
+		}
+		
+		public Map<String, String[]> attributes() {
+			return attributes;
 		}
 
 		public Multiplicity multiplicity() {
@@ -169,6 +177,7 @@ public class INISchema {
 		private final String name;
 		private final String[] path;
 		private final List<SectionDescriptor> sections;
+		private final Map<String, String[]> attributes;
 
 		private SectionDescriptor(
 				String key, 
@@ -178,6 +187,7 @@ public class INISchema {
 				List<KeyDescriptor> keys,
 				List<SectionDescriptor> sections,
 				Optional<Multiplicity> multiplicity,
+				Map<String, String[]> attributes,
 				String... path) {
 			super();
 			this.key = key;
@@ -188,6 +198,11 @@ public class INISchema {
 			this.keys = keys;
 			this.sections = sections;
 			this.multiplicity = multiplicity.orElse(Multiplicity.ONE);
+			this.attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
+		}
+		
+		public Map<String, String[]> attributes() {
+			return attributes;
 		}
 
 		public Multiplicity arity() {
@@ -494,8 +509,8 @@ public class INISchema {
 	}
 
 	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
-	
 	public static final String SCHEMA_ITEM_NAME = "name";
+	public static final String SCHEMA_SECTION_ATTRIBUTES = "attributes";
 
 	@Deprecated
 	private static final String SCHEMA_ITEM_ARITY = "arity";
@@ -672,7 +687,8 @@ public class INISchema {
 					sec.getAllElse("default-value"),
 					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
 					discriminatorForSection(type, sec),
-					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)));
+					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
+					sec.sectionOr(SCHEMA_SECTION_ATTRIBUTES).map(s -> s.rawValues()).orElseGet(() -> Collections.emptyMap()));
 			});
 	}
 
@@ -747,6 +763,7 @@ public class INISchema {
 							return sectionDescriptor(k[0]);
 						}).collect(Collectors.toList()),
 				section.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> section.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
+				section.sectionOr(SCHEMA_SECTION_ATTRIBUTES).map(s -> s.rawValues()).orElseGet(() -> Collections.emptyMap()),
 				section.path()
 		);
 	}
