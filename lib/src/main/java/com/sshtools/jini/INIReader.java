@@ -578,6 +578,7 @@ public final class INIReader extends AbstractIO {
             var skipToNext = false;
             var bufSizeAtStartOfLine = buf.length();
             var inlineComment = new StringBuilder();
+            var assigned = false;
             
             while(column < lineChars.length) {
 	            for (; column < lineChars.length; column++) {
@@ -702,6 +703,7 @@ public final class INIReader extends AbstractIO {
 		                                if (ch == valueSeparator) {
 		                                    key = unescapeJavaString(buf.toString());
 		                                    buf.setLength(0);
+		                                    assigned = true;
 		                                }
 		//								else if(ch == ' ' || ch == '\t') {
 		//									continue;
@@ -870,7 +872,7 @@ public final class INIReader extends AbstractIO {
                     	   				lastAppendedLine != lineNo 
 	                    	   	) ) {
 	                        /* Doesn't exist, just add */
-	                    	if(val.equals(""))
+	                    	if(val.equals("") && !assigned)
 	                    		sectionProperties.put(key, new String[0]);
 	                    	else
 	                    		sectionProperties.put(key, new String[] { val });

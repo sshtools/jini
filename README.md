@@ -387,9 +387,10 @@ Thanks to others who have contributed to Jini.
 
 ### 0.6.1
 
- * Generic attributes can be added to schema items. Use `attributes()` in `KeyDescriptor` and `SectionDescriptor`. Add a section `[<item-name>.attributes]` with 
+ * *Feature* Generic attributes can be added to schema items. Use `attributes()` in `KeyDescriptor` and `SectionDescriptor`. Add a section `[<item-name>.attributes]` with 
    arbitrary keys. Recommend using colon notation for keys, and prefix with the `x:` key,
    e.g. `x:prefererred-presentation`. 
+ * *Bug* Could not have an empty string as a value. 
 
 ### 0.6.0
 

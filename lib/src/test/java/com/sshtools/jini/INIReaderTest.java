@@ -110,6 +110,17 @@ public final class INIReaderTest {
     }
     
     @Test
+    public void testEmptyKeysOnly() throws IOException, ParseException {
+        var ini = new INIReader.Builder()
+                .build().read(
+                        "EK1 = \n" +
+                        "EK2 = \"\"\n"); 
+        assertEquals(2, ini.values().size());
+        assertEquals("", ini.get("EK1"));
+        assertEquals("", ini.get("EK2"));
+    }
+    
+    @Test
     public void testReplaceDuplicateKeys() throws IOException, ParseException {
         var ini = new INIReader.Builder().withDuplicateKeysAction(DuplicateAction.REPLACE)
                 .build().read(
