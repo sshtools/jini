@@ -776,7 +776,9 @@ public class INISchema {
 						filter(s -> typeForSection(s[0]).equals(Type.SECTION)).
 						map(k -> {
 							return sectionDescriptor(k[0]);
-						}).collect(Collectors.toList()),
+						}).
+						filter(sd -> !sd.name().equals("x:attributes")).
+						collect(Collectors.toList()),
 				section.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> section.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
 				section.sectionOr(SCHEMA_SECTION_ATTRIBUTES).map(s -> s.rawValues()).orElseGet(() -> Collections.emptyMap()),
 				section.path()

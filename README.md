@@ -53,12 +53,12 @@ _See badge above for version available on Maven Central. Snapshot versions are i
 
 ```xml
 <repository>
-	<id>oss-snapshots</id>
-	<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-	<snapshots />
-	<releases>
-		<enabled>false</enabled>
-	</releases>
+    <id>oss-snapshots</id>
+    <url>https://central.sonatype.com/repository/maven-snapshots</url>
+    <snapshots />
+    <releases>
+        <enabled>false</enabled>
+    </releases>
 </repository>
 ```
 ### JPMS
