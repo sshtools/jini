@@ -18,6 +18,7 @@ package com.sshtools.jini.config;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.ClosedWatchServiceException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
@@ -111,7 +112,7 @@ public class Monitor implements Closeable {
 				WatchKey key;
 				try {
 					key = watchService.take();
-				} catch (InterruptedException x) {
+				} catch (InterruptedException | ClosedWatchServiceException x) {
 					return;
 				}
 
