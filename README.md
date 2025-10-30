@@ -385,6 +385,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.2
+
+ * `Monitor` might crash sometimes if multiple files are being watched.
+
 ### 0.6.1
 
  * *Feature* Generic attributes can be added to schema items. Use `attributes()` in `KeyDescriptor` and `SectionDescriptor`. Add a section `[<item-name>.attributes]` with 
