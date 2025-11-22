@@ -178,12 +178,34 @@ public class WrappedINI {
 
 		@Override
 		public final Handle onValueUpdate(ValueUpdate listener) {
-			return delegate.onValueUpdate(listener);
+			var hndl = delegate.onValueUpdate(vu -> {
+				listener.update(new ValueUpdateEvent(
+						vu.parentOr().map(p -> p instanceof Section ? map.computeIfAbsent((Section)p, k -> wrapSection(k)) : null), 
+						vu.key(), 
+						vu.newValues(), 
+						vu.oldValues()
+					)
+				);
+			});
+			return new Handle() {
+				@Override
+				public void close() {
+					hndl.close();
+				}
+			};
 		}
 
 		@Override
 		public final Handle onSectionUpdate(SectionUpdate listener) {
-			return delegate.onSectionUpdate(listener);
+			var hndl = delegate.onSectionUpdate(su -> {
+				listener.update(new SectionUpdateEvent(su.type(), map.computeIfAbsent(su.section(), k -> wrapSection(k))));
+			});
+			return new Handle() {
+				@Override
+				public void close() {
+					hndl.close();
+				}
+			};
 		}
 
 		@Override

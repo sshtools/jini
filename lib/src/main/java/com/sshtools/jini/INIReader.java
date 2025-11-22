@@ -562,7 +562,7 @@ public final class INIReader extends AbstractIO {
             	continue;
             }
             
-            if( comments &&  lineWithoutLeading.charAt(0) == commentCharacter) {
+			if (comments &&  lineWithoutLeading.length() > 0 && lineWithoutLeading.charAt(0) == commentCharacter) {
             	var ln = fullLine.trim();
             	while(ln.startsWith(String.valueOf(commentCharacter))) {
             		ln = ln.substring(1);

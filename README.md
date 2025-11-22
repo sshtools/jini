@@ -385,6 +385,11 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.3
+
+ * Exception with empty lines in multiline strings.
+ * `ValueUpdate` and `SectionUpdate` in `INISet` carried unwrapped `parent` instead of wrapped one (i.e. different objects to the document itself).
+
 ### 0.6.2
 
  * `Monitor` might crash sometimes if multiple files are being watched.
