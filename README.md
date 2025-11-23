@@ -46,7 +46,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.6.3</version>
+    <version>0.6.4</version>
 </dependency>
 ```
 
@@ -149,7 +149,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.5.6</version>
+    <version>0.6.4</version>
 </dependency>
 ```
 
@@ -209,7 +209,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.5.6</version>
+    <version>0.6.4</version>
 </dependency>
 ```
 
@@ -266,8 +266,8 @@ The entry point to de-serializing an object can be via a (reusable) `INIDeserial
 Alternatively, you can use one of several convenience methods.
 
  * `INIDeserializer.fromINI(INI ini, MyObject.class)` creates a `MyObject` from an `INI`. 
- * `INIDeserializer.read(String path, MyObject.class)` and `INISerializer.read(Path path, MyObject.class)` reads an object from a file.
- * `INISerializer.read(Reader reader, MyObject.class)` reader INI contents from a `Reader` and construct a `MyObject` from it. 
+ * `INIDeserializer.read(String path, MyObject.class)` and `INIDeserializer.read(Path path, MyObject.class)` reads an object from a file.
+ * `INIDeserializer.read(Reader reader, MyObject.class)` reader INI contents from a `Reader` and construct a `MyObject` from it. 
 
 ```java
 class Address {
@@ -338,7 +338,7 @@ You then wrap an existing `INI` instance with a schema, producing another `INI` 
 ```java
 var schema = INISchema.fromFile(Paths.get("data.schema.ini"));
 var ini = INI.fromFile(Paths.get("data.ini"));
-var wrapped = schema.facadeFor(wrapped);
+var wrapped = schema.facadeFor(ini);
 ```
 
 There are a number of convenience methods, and a builder `INISchema.Builder` that may be used to create a schema. 
