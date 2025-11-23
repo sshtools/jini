@@ -713,13 +713,25 @@ public class INISchema {
 
 	private void printNameAndDescription(Section section, PrintWriter printer, String ind) {
 		section.getOr(SCHEMA_ITEM_NAME).ifPresentOrElse(name -> {
-			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc ->
-				printer.format(";%s %s - %s%n", ind, name, desc)
-			, () -> printer.format(";%s %s%n", ind, name));
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresentOrElse(desc -> {
+				var lines = desc.split("\\r?\\n");
+				for(var i = 0 ; i < lines.length; i++) {
+					if(i == 0) {
+						printer.format(";%s %s - %s%n", ind, name, lines[i]);
+					}
+					else {
+						printer.format("; %s%n", lines[i]);
+					}
+				}
+			}, () -> printer.format(";%s %s%n", ind, name));
 		}
 		, () -> {
-			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresent(desc ->
-				printer.format(";%s %s%n", ind, desc));
+			section.getOr(SCHEMA_ITEM_DESCRIPTION).ifPresent(desc -> {
+				var lines = desc.split("\\r?\\n");
+				for(var i = 0 ; i < lines.length; i++) {
+					printer.format(";%s %s%n", ind, lines[i]);
+				}
+			});
 		});
 	}
 

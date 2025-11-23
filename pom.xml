@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.sshtools</groupId>
     <artifactId>jini</artifactId>
-   	<version>0.6.3</version>
+   	<version>0.6.4</version>
     <name>Jini - Java INI file reader and writer</name>
     <packaging>pom</packaging>
     <properties>
@@ -63,6 +63,7 @@
         <module>schema</module>
         <module>config</module>
         <module>serialization</module>
+        <module>maven-plugin</module>
     </modules>
     <dependencies>
         <dependency>
@@ -150,6 +151,7 @@
 	          		<extensions>true</extensions>
 	          		<configuration>
 	          		    <autoPublish>true</autoPublish>
+	          		    <waitUntil>published</waitUntil>
 	            		<publishingServerId>central-sshtools</publishingServerId>
 	          		</configuration>
 	        	</plugin>

@@ -31,6 +31,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
  * [Object Serialization and De-serialization](#object-serialization-and-de-serialization) using reflection or plain Java.
  * Use a [Schema](#schemas) to describe your document and ensure it always contains valid data.
  * A generic [Configuration](#configuration) API with change monitoring. Similar to the prefences API, but using the native API with support for schemas.
+ * A Maven plugin that can generate default INI files from a schema.
  
 ## WIP
 
@@ -45,7 +46,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.5.5</version>
+    <version>0.6.3</version>
 </dependency>
 ```
 
@@ -384,6 +385,10 @@ Thanks to others who have contributed to Jini.
  * [A248](https://github.com/A248)
 
 ## Changes
+
+### 0.6.4
+
+ * Added `jini-maven-plugin`. Currently has single goal `generate-defaults`. By default will scan project resources (`src/main/resource`) for `*.schema.ini` files, and generate a default commented INI file. The file will by default be placed in `target/generated-inis`. The filename is generated from the resource name. E.g. given a schema name such as `MyConfiguration.schema.ini`, the file `my-configuration.ini` will be generated. This default name generation may be overriden using the `<nameMap>` plugin configuration. Additional directories can be scanned using `<sourceDirectories>` plugin configuration. 
 
 ### 0.6.3
 
