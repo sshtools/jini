@@ -46,7 +46,7 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.6.4</version>
+    <version>0.6.5</version>
 </dependency>
 ```
 
@@ -149,7 +149,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-prefs</artifactId>
-    <version>0.6.4</version>
+    <version>0.6.5</version>
 </dependency>
 ```
 
@@ -209,7 +209,7 @@ Just add the following dependency to your project's `pom.xml`.
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-serialization</artifactId>
-    <version>0.6.4</version>
+    <version>0.6.5</version>
 </dependency>
 ```
 
@@ -386,9 +386,13 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.5
+
+ * Added `hint` attribute to schemas. This can be used as an example to the user, particularly when there is no `default-value`. The hint will be used as the example commented value in any generated INI files in preference to the default value. 
+
 ### 0.6.4
 
- * Added `jini-maven-plugin`. Currently has single goal `generate-defaults`. By default will scan project resources (`src/main/resource`) for `*.schema.ini` files, and generate a default commented INI file. The file will by default be placed in `target/generated-inis`. The filename is generated from the resource name. E.g. given a schema name such as `MyConfiguration.schema.ini`, the file `my-configuration.ini` will be generated. This default name generation may be overriden using the `<nameMap>` plugin configuration. Additional directories can be scanned using `<sourceDirectories>` plugin configuration. 
+ * Added `jini-maven-plugin`. Currently has single goal `generate-defaults`. By default will scan project resources (`src/main/resource`) for `*.schema.ini` files, and generate a default commented INI file. The file will by default be placed in `target/generated-inis`. The filename is generated from the resource name. E.g. given a schema name such as `MyConfiguration.schema.ini`, the file `my-configuration.ini` will be generated. This default name generation may be overriden using the `<nameMap>` plugin configuration. Additional directories can be scanned using `<sourceDirectories>` plugin configuration.
 
 ### 0.6.3
 

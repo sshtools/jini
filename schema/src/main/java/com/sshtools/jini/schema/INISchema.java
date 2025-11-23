@@ -48,6 +48,7 @@ import com.sshtools.jini.WrappedINI;
 
 public class INISchema {
 	
+
 	public interface Attributed {
 		Map<String, String[]> attributes();
 		
@@ -110,9 +111,10 @@ public class INISchema {
 		private final String name;
 		private final Type type;
 		private final Optional<String[]> values;
+		private final Optional<String[]> hints;
 		private final Map<String, String[]> attributes;
 
-		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue,
+		private KeyDescriptor(String key, String name, Type type, Optional<String[]> values, String[] defaultValue, Optional<String[]> hints,
 				Optional<String> description, Optional<Discriminator> discriminator, Optional<Multiplicity> multiplicity,
 				Map<String, String[]> attributes) {
 			super();
@@ -124,6 +126,7 @@ public class INISchema {
 			this.type = type;
 			this.discriminator = discriminator;
 			this.values = values;
+			this.hints = hints;
 			this.defaultValues = defaultValue;
 			this.description = description;
 			this.multiplicity = multiplicity.orElseGet(() ->
@@ -175,6 +178,10 @@ public class INISchema {
 
 		public Optional<String[]> values() {
 			return values;
+		}
+
+		public Optional<String[]> hints() {
+			return hints;
 		}
 
 		public <DEL extends Data> boolean validate(DEL delegate) {
@@ -523,6 +530,9 @@ public class INISchema {
 
 	}
 
+	public static final String SCHEMA_VALUE = "value";
+	public static final String SCHEMA_DEFAULT_VALUE = "default-value";
+	public static final String SCHEMA_HINT = "hint";
 	public static final String SCHEMA_ITEM_DESCRIPTION = "description";
 	public static final String SCHEMA_ITEM_NAME = "name";
 	public static final String SCHEMA_SECTION_ATTRIBUTES = "x:attributes";
@@ -698,8 +708,9 @@ public class INISchema {
 					secpath[secpath.length - 1],
 					sec.getOr(SCHEMA_ITEM_NAME).orElse(secpath[secpath.length - 1]),
 					type,
-					sec.getAllOr("value"),
-					sec.getAllElse("default-value"),
+					sec.getAllOr(SCHEMA_VALUE),
+					sec.getAllElse(SCHEMA_DEFAULT_VALUE),
+					sec.getAllOr(SCHEMA_HINT),
 					sec.getOr(SCHEMA_ITEM_DESCRIPTION),
 					discriminatorForSection(type, sec),
 					sec.getOr(SCHEMA_ITEM_MULTIPLICITY).map(Multiplicity::parse).or(() -> sec.getOr(SCHEMA_ITEM_ARITY).map(Multiplicity::parse)),
@@ -811,7 +822,7 @@ public class INISchema {
 
 			/* If it has a type, its a key */
 			printNameAndDescription(section, printer, ind);
-			section.getOr("default-value").ifPresentOrElse(val ->
+			section.getOr(SCHEMA_HINT).or(() -> section.getOr(SCHEMA_DEFAULT_VALUE)).ifPresentOrElse(val ->
 				printer.format(";%s%s = %s%n", ind, section.key(), val)
 			, () -> {
 				printer.format(";%s %s = %n", ind, section.key());
