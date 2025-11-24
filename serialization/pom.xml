@@ -22,7 +22,7 @@
     <parent>
         <artifactId>jini</artifactId>
         <groupId>com.sshtools</groupId>
-   		<version>0.6.5</version>
+   		<version>0.6.6</version>
         <relativePath>../</relativePath>
     </parent>
     <artifactId>jini-serialzation</artifactId>

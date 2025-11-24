@@ -386,6 +386,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.6
+
+* `ConcurrentModificationException` on programmatic changes to `INISchema` wrappped documents.
+
 ### 0.6.5
 
  * Added `hint` attribute to schemas. This can be used as an example to the user, particularly when there is no `default-value`. The hint will be used as the example commented value in any generated INI files in preference to the default value. 

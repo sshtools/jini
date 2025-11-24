@@ -180,7 +180,18 @@ public class WrappedINI {
 		public final Handle onValueUpdate(ValueUpdate listener) {
 			var hndl = delegate.onValueUpdate(vu -> {
 				listener.update(new ValueUpdateEvent(
-						vu.parentOr().map(p -> p instanceof Section ? map.computeIfAbsent((Section)p, k -> wrapSection(k)) : null), 
+						vu.parentOr().map(p -> {
+							if(p instanceof Section) {
+								var wrpd = map.get((Section)p);
+								if(wrpd == null) {
+									wrpd = wrapSection((Section)p);
+								}
+								return 	wrpd;
+							}
+							else {
+								return null;
+							}
+						}), 
 						vu.key(), 
 						vu.newValues(), 
 						vu.oldValues()
@@ -198,7 +209,11 @@ public class WrappedINI {
 		@Override
 		public final Handle onSectionUpdate(SectionUpdate listener) {
 			var hndl = delegate.onSectionUpdate(su -> {
-				listener.update(new SectionUpdateEvent(su.type(), map.computeIfAbsent(su.section(), k -> wrapSection(k))));
+				var wrpd = map.get(su.section());
+				if(wrpd == null) {
+					wrpd = wrapSection(su.section());
+				}
+				listener.update(new SectionUpdateEvent(su.type(), wrpd));
 			});
 			return new Handle() {
 				@Override
