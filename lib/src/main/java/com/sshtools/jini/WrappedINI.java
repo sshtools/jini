@@ -164,9 +164,11 @@ public class WrappedINI {
 		}
 
 		protected SECWRAP wrapSection(Section delSec) {
-			var wrpr = createWrappedSection(delSec);
-			map.put(delSec, wrpr);
-			return wrpr;
+			return map.computeIfAbsent(delSec, this::createWrappedSection);
+//			
+//			var wrpr = createWrappedSection(delSec);
+//			map.put(delSec, wrpr);
+//			return wrpr;
 		}
 		
 		protected abstract SECWRAP createWrappedSection(Section delSec);
@@ -192,9 +194,10 @@ public class WrappedINI {
 								return null;
 							}
 						}), 
-						vu.key(), 
-						vu.newValues(), 
-						vu.oldValues()
+						vu.key(),
+						vu.oldValues(),
+						vu.newValues()
+						
 					)
 				);
 			});

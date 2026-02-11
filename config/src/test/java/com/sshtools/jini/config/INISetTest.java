@@ -16,21 +16,27 @@
 package com.sshtools.jini.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.sshtools.jini.Data.ValueUpdateEvent;
 import com.sshtools.jini.INI;
 import com.sshtools.jini.INIWriter;
+import com.sshtools.jini.config.INISet.Builder;
 import com.sshtools.jini.config.INISet.Scope;
+import com.sshtools.jini.schema.INISchema;
 
 public class INISetTest {
 	
@@ -52,16 +58,64 @@ public class INISetTest {
     @Test
     public void testReadOnly() throws Exception {
     	assertThrows(UnsupportedOperationException.class, () -> {
-        	testSet().document().readOnly().put("XXX", "YYY");
+    		testSet(INISchema.fromClass(INISetTest.class)).document().readOnly().put("XXX", "YYY");
     	});
     }
+
+    @Test
+    public void testFacadeObtainSectionWithOnlyDefaultValues() throws Exception {
+    	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithOnlyDefaultValues.schema.ini");
+    	var set = testSet(schm);
+		var facade = set.document();
+		var sec = facade.section("section");		
+    	var k1v = sec.getBoolean("key1");
+		assertEquals(true, k1v);
+    	var k2v = sec.get("key2");
+		assertEquals("Some value",  k2v);
+	}
+
+    @Test
+    public void testChangeForUserSets() throws Exception {
+    	testChangeFor(userSets);
+	}
+
+    @Test
+    public void testChangeForGlobalSets() throws Exception {
+    	testChangeFor(globalSets);
+	}
+
+    @Test
+    public void testProgrammaticAddSections() throws Exception {
+    	var schm = INISchema.fromClass(INISetTest.class);
+		var set = testSetBuilder(schm).
+				withMonitor(new Monitor()).
+				withWriteScope(Scope.USER).
+				build();
+		
+		set.groupWrite(ini -> {
+			ini.put("key1", "Value X");
+			for(var i = 0; i < 10; i++) {
+				var sec = ini.create("section");
+				sec.put("key1a", false);
+			}			
+		});
+		
+		var file = userSets.resolve("jini").resolve("jini.ini");
+		var ini = INI.fromFile(file);
+		assertEquals("Value X", ini.get("key1"));
+		var secs = ini.allSections("section");
+		assertEquals(10, secs.length);
+		for(var i = 0; i < 10; i++) {
+			assertEquals(false, secs[i].getBoolean("key1a"));
+		}
+	}
 
     @Test
     public void testFacadeForMultipleSections() throws Exception {
     	var file = checkDir(userSets.resolve("jini")).resolve("jini.ini");
     	var ini = INI.fromResource(INISetTest.class, "testFacadeForMultipleSections.ini");
     	new INIWriter.Builder().build().write(ini, file);
-    	var set = testSet();
+    	var set = testSet(INISchema.fromClass(INISetTest.class));
     	var facade = set.document();
     	
     	var secs = facade.allSections("section");
@@ -78,13 +132,50 @@ public class INISetTest {
     	assertEquals("section2", subSecs[1].key());
     }
 
-	private INISet testSet() {
+	private INISet testSet(INISchema schema) {
+		return testSetBuilder(schema).
+				build();
+	}
+
+	private Builder testSetBuilder(INISchema schema) {
 		return new INISet.Builder("jini").
 				withAllScopes().
-				withSchema(INISetTest.class).
+				withSchema(schema).
 				withPath(Scope.USER, userSets).
-				withPath(Scope.GLOBAL, globalSets).
-				build();
+				withPath(Scope.GLOBAL, globalSets);
+	}
+
+	private void testChangeFor(Path sets) throws IOException, InterruptedException {
+		try(var  monitor = new Monitor()) {
+	    	var schm = INISchema.fromClass(INISetTest.class);
+	    	var set = testSetBuilder(schm).
+	    			withMonitor(monitor).
+	    			build();
+			var facade = set.document();
+			var sec = facade.section("section");
+			
+			var updates = new ArrayList<ValueUpdateEvent>();
+			
+			sec.onValueUpdate(vu -> {
+				updates.add(vu);
+				synchronized(updates) {
+					updates.notifyAll();
+				}
+			});
+	
+	    	var file = checkDir(sets.resolve("jini")).resolve("jini.ini");
+			try(var wtr = new PrintWriter(Files.newBufferedWriter(file), true)) {
+				wtr.format("[section]%nkey1a=MyValue");
+			}
+			
+			synchronized(updates) {
+				updates.wait(10000);
+			}
+			
+			assertEquals(1, updates.size());
+			assertEquals("key1a", updates.get(0).key());
+			assertArrayEquals(new String[] { "MyValue" }, updates.get(0).newValues());
+    	}
 	}
 	
 	static Path checkDir(Path path) throws IOException {

@@ -36,7 +36,7 @@ A small Java library to read and write [INI](https://en.wikipedia.org/wiki/INI_f
 ## WIP
 
  * Tests (see above badge for current coverage)
- * `jini-schema` current just returns a document that always complies with the schema, there are currently no validation or generation tools (planned).
+ * `jini-schema` currently just returns a document that always complies with the schema, there are currently no validation or generation tools (planned).
  
 ## Installation
 
@@ -46,11 +46,11 @@ Available on Maven Central, so just add the following dependency to your project
 <dependency>
     <groupId>com.sshtools</groupId>
     <artifactId>jini-lib</artifactId>
-    <version>0.6.5</version>
+    <version>0.6.7</version>
 </dependency>
 ```
 
-_See badge above for version available on Maven Central. Snapshot versions are in the [Sonatype OSS Snapshot Repository](https://oss.sonatype.org/content/repositories/snapshots/)._
+_See badge above for version available on Maven Central. Snapshot versions are in the [Sonatype OSS Snapshot Repository](https://central.sonatype.com/repository/maven-snapshots)._
 
 ```xml
 <repository>
@@ -385,6 +385,12 @@ Thanks to others who have contributed to Jini.
  * [A248](https://github.com/A248)
 
 ## Changes
+
+### 0.6.7
+
+* `INISet` gets a `commit()` and `groupWrite(Consumer<INI> callback)` method. The former forces writing of the user settings, and the latter allows a multiple keys and sections to be updated without a write triggering until the task is complete. The `groupWrite` may be moved to the `INI` interface at some point.
+* Quotes not being escaped by `INIWriter`.
+* `INISet` value update events, `newValues` and `oldValues` were transposed.
 
 ### 0.6.6
 

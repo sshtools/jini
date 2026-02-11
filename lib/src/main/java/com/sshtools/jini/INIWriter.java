@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 import com.sshtools.jini.INI.AbstractIO;
 import com.sshtools.jini.INI.AbstractIOBuilder;
@@ -375,7 +376,7 @@ public class INIWriter extends AbstractIO {
     }
     
     private boolean needsSpecialQuote(String value) {
-        for (var c : new char[] { multiValueSeparator, '\t', valueSeparator, commentCharacter, '\r', '\\', '\n', '\0', '\b' }) {
+        for (var c : new char[] { multiValueSeparator, '\t', quoteCharacter, valueSeparator, commentCharacter, '\r', '\\', '\n', '\0', '\b' }) {
             if (value.indexOf(c) != -1)
                 return true;
         }
@@ -394,6 +395,8 @@ public class INIWriter extends AbstractIO {
             value = value.replace("\n", "\\n");
             value = value.replace("\0", "\\0");
             value = value.replace("\b", "\\b");
+            String sq = String.valueOf(quoteCharacter);
+			value = value.replace(sq, "\\" + quoteCharacter);
             switch (stringQuoteMode) {
             case NEVER:
             case ALWAYS:

@@ -17,7 +17,9 @@ package com.sshtools.jini;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 
 import org.junit.jupiter.api.Test;
@@ -143,6 +145,22 @@ public class INIWriterTest {
 		                withEscapeMode(EscapeMode.ALWAYS).
 		                withStringQuoteMode(StringQuoteMode.NEVER).build();
         assertEquals("AVal = C:\\\\Window\\\\Path\\\\To\\\\Something" + System.lineSeparator(), wtr.write(ini));
+    }
+
+
+    @Test
+    public void testXMLString() throws IOException, ParseException {
+    	String xml;
+    	try(var rdr = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("test-one-line.xml")))) {
+    		xml = rdr.readLine();
+		}
+    	var ini = INI.create();
+		 ini.put("xml", xml);
+		 
+		 var wtr = new INIWriter.Builder().build();
+
+		 assertEquals("xml = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?><DIDL-Lite xmlns=\\\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\\\" xmlns:dc=\\\"http://purl.org/dc/elements/1.1/\\\" xmlns:upnp=\\\"urn:schemas-upnp-org:metadata-1-0/upnp/\\\" xmlns:dlna=\\\"urn:schemas-dlna-org:metadata-1-0/\\\"><item id=\\\"06f6b3d8caae581144a452335067234e\\\" parentID=\\\"a62f194feda3bf1936f267d1bbebfd44\\\"><dc:title>Descartes</dc:title><dc:creator>Synæsthesia</dc:creator><dc:date>1997-01-01</dc:date><upnp:class>object.item.audioItem.musicTrack</upnp:class><upnp:artist>Synæsthesia</upnp:artist><upnp:album>Ephemeral</upnp:album><upnp:genre>Ambient</upnp:genre><upnp:albumArtURI>http://192.168.91.31:8096/Items/a62f194feda3bf1936f267d1bbebfd44/Images/Primary/0/50d5c8be4a4d7d08a877f7cc5e9dde10/jpg/480/480/0/0</upnp:albumArtURI><upnp:originalTrackNumber>7</upnp:originalTrackNumber></item></DIDL-Lite>\"\n"
+		 		, wtr.write(ini));
     }
 
     @Test

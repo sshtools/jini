@@ -161,6 +161,16 @@ public class INISchemaTest {
         assertKey1C(schm.keyFromPath("section.section2.key1c").get());
         
     }
+    
+    @Test
+    public void testFacadeObtainSectionWithOnlyDefaultValues() throws Exception {
+    	var schm = INISchema.fromClass(INISchemaTest.class, "INISchemaTest.testFacadeObtainSectionWithOnlyDefaultValues.schema.ini");
+		var ini = INI.create();
+		var facade = schm.facadeFor(ini);
+		var sec = facade.obtainSection("section");
+    	assertEquals(true, sec.getBoolean("key1"));
+    	assertEquals("Some value",  sec.get("key2"));
+	}
 
     @Test
     public void testFacadeForMultipleSections() throws Exception {

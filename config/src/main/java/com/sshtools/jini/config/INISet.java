@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -92,6 +93,8 @@ public final class INISet implements Closeable {
 		private Set<String> sectionPaths = new HashSet<>();
 		private Set<String> keyPaths = new HashSet<>();
 	}
+	
+	private final static ThreadLocal<Boolean> GROUPING = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
 	private abstract static class AbstractSetWrapper<DEL extends Data> extends WrappedINI.AbstractWrapper<DEL, INISet, SetSectionWrapper> {
 
@@ -104,6 +107,7 @@ public final class INISet implements Closeable {
 
 		@Override
 		public Section create(String... path) {
+			
 //			var ref = userObject.ref(Scope.USER);
 //			var wtrbl = ref.writable();
 //			var wtrblDoc = wtrbl.document();
@@ -115,7 +119,12 @@ public final class INISet implements Closeable {
 //				throw new UncheckedIOException(e);
 //			}
 			
-			return super.create(path);
+			
+			var sec = new AtomicReference<Section>();
+			doWritable(data -> {
+				sec.set(data.create(path));
+			});
+			return sec.get();
 		}
 
 		@Override
@@ -167,57 +176,65 @@ public final class INISet implements Closeable {
 
 		@Override
 		public final <E extends Enum<E>> void putAllEnum(String key, @SuppressWarnings("unchecked") E... values) {
-			doOnWritable(key, data -> data.putAllEnum(key, values));
+			doOnWritable(data -> data.putAllEnum(key, values));
 		}
 
 		@Override
 		public final void putAll(String key, String... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 		}
 
 		@Override
 		public final void putAll(String key, int... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 		}
 
 		@Override
 		public final void putAll(String key, short... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 		}
 
 		@Override
 		public final void putAll(String key, long... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 
 		}
 
 		@Override
 		public final void putAll(String key, float... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 
 		}
 
 		@Override
 		public final void putAll(String key, double... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 
 		}
 
 		@Override
 		public final void putAll(String key, boolean... values) {
-			doOnWritable(key, data -> data.putAll(key, values));
+			doOnWritable(data -> data.putAll(key, values));
 		}
 
 		@Override
 		public final boolean remove(String key) {
 			var res = new AtomicBoolean();
-			doOnWritable(key, data -> res.set(data.remove(key)));
+			doOnWritable(data -> res.set(data.remove(key)));
 			return res.get();
 		}
 
-		private void doOnWritable(String key, Consumer<Data> task) {
-			var ref = userObject.ref(userObject.writeScope.orElse(Scope.USER));
+		protected void doOnWritable(Consumer<Data> task) {
 			try {
+				doWritable(task);
+			} finally {
+				task.accept(delegate);
+			}
+		}
+
+		protected void doWritable(Consumer<Data> task) {
+			try {
+				var ref = userObject.ref(userObject.writeScope.orElse(Scope.USER));
 				var wtrblDoc = ref.document();
 				if (delegate instanceof INI) {
 					task.accept(wtrblDoc);
@@ -237,13 +254,11 @@ public final class INISet implements Closeable {
 				ref.write();
 			} catch (IOException ioe) {
 				throw new UncheckedIOException(ioe);
-			} finally {
-				task.accept(delegate);
 			}
 		}
 	}
 
-	private final static class SetSectionWrapper extends AbstractSetWrapper<Section> implements Section {
+	final static class SetSectionWrapper extends AbstractSetWrapper<Section> implements Section {
 
 		public SetSectionWrapper(boolean systemPropertyOverrides, Section delegate, AbstractSetWrapper<?> parent, INISet set) {
 			super(systemPropertyOverrides, delegate, parent, set);
@@ -253,7 +268,7 @@ public final class INISet implements Closeable {
 
 		@Override
 		public final void remove() {
-			delegate.remove();
+			doOnWritable(data -> ((Section)data).remove());
 			((AbstractSetWrapper<?>) parent).removeSection(delegate);
 		}
 
@@ -287,7 +302,7 @@ public final class INISet implements Closeable {
 
 	}
 
-	private final static class RootSetWrapper extends AbstractSetWrapper<INI> implements INI {
+	final static class RootSetWrapper extends AbstractSetWrapper<INI> implements INI {
 
 		public RootSetWrapper(boolean systemPropertyOverrides,INI delegate, INISet set) {
 			super(systemPropertyOverrides, delegate, null, set);
@@ -503,9 +518,11 @@ public final class INISet implements Closeable {
 			}
 		}
 
-		public void write() throws IOException {
-		    writerFactory.map(Supplier::get).orElseGet(this::defaultWriterBuilder).build().write(document(),
-					path.orElseThrow(() -> new IllegalStateException("No path.")));
+		public synchronized void write() throws IOException {
+			if(GROUPING.get() == Boolean.FALSE) {
+			    writerFactory.map(Supplier::get).orElseGet(this::defaultWriterBuilder).build().write(document(),
+						path.orElseThrow(() -> new IllegalStateException("No path.")));
+			}
 		}
 
 	    protected INIWriter.Builder defaultWriterBuilder() {
@@ -605,6 +622,32 @@ public final class INISet implements Closeable {
 		}
 		else
 			wrapper = new RootSetWrapper(systemPropertyOverrides, master, this);
+	}
+	
+	public void groupWrite(Consumer<INI> task) {
+		writeScope.ifPresentOrElse(scope -> {
+			GROUPING.set(Boolean.TRUE);
+			try {
+				task.accept(wrapper);
+			} finally {
+				GROUPING.set(Boolean.FALSE);
+			}
+		}, () -> { 
+			throw new IllegalStateException("No write scope."); 
+		});
+		commit();
+	}
+	
+	public void commit() {
+		writeScope.ifPresentOrElse(scope -> {
+			try {
+				ref(scope).write();
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}, () -> { 
+			throw new IllegalStateException("No write scope."); 
+		});
 	}
 
 	public void maybeWriteDefaults(Scope scope) {
@@ -934,5 +977,9 @@ public final class INISet implements Closeable {
 
 	private static Path resolveHome() {
 		return Paths.get(System.getProperty("user.home"));
+	}
+	
+	INI wrapper() {
+		return wrapper;
 	}
 }
