@@ -740,7 +740,7 @@ public final class INISet implements Closeable {
 
 	public Path appPathForScope(Scope scope) {
 		var root = rootPathForScope(scope);
-		if (!isLinux() && !isWindows() && scope == Scope.USER) {
+		if (!isLinux() && !isMacOs() && !isWindows() && scope == Scope.USER) {
 			return root.resolve("." + app);
 		} else {
 			return root.resolve(app);

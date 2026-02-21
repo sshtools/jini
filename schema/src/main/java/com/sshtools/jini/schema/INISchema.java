@@ -273,6 +273,9 @@ public class INISchema {
 
 		@Override
 		public Optional<Section[]> allSectionsOr(String... path) {
+			if(Arrays.asList(path).contains("pricli")) {
+				System.out.println("brk!");
+			}
 			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
 			var mgr = new LinkedHashMap<String, Section[]>();
 			for(var sec : allSections) {
@@ -311,7 +314,8 @@ public class INISchema {
 
 		@Override
 		public boolean contains(String key) {
-			return delegate.contains(key) || userObject.keyOr(this, key).isPresent();
+			return delegate.contains(key) || 
+				( userObject.keyOr(this, key).map(k -> k.defaultValues().length > 0).orElse(false) );
 		}
 
 		@Override

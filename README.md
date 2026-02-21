@@ -386,6 +386,12 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.8
+
+ * Mac OS path for user configuration files prefixed with `.` where it should not be.
+ * `contains()` method for `INISet` facade documents would return `true` if a key didn't exists as a value but had a schema entry with no default values.
+ 
+
 ### 0.6.7
 
 * `INISet` gets a `commit()` and `groupWrite(Consumer<INI> callback)` method. The former forces writing of the user settings, and the latter allows a multiple keys and sections to be updated without a write triggering until the task is complete. The `groupWrite` may be moved to the `INI` interface at some point.
