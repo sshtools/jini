@@ -386,6 +386,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.9
+
+ * Update events were being fired if the values didn't actually change.
+
 ### 0.6.8
 
  * Mac OS path for user configuration files prefixed with `.` where it should not be.

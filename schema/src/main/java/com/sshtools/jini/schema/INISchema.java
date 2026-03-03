@@ -273,9 +273,6 @@ public class INISchema {
 
 		@Override
 		public Optional<Section[]> allSectionsOr(String... path) {
-			if(Arrays.asList(path).contains("pricli")) {
-				System.out.println("brk!");
-			}
 			var allSections = super.allSectionsOr(path).orElse(new Section[0]);
 			var mgr = new LinkedHashMap<String, Section[]>();
 			for(var sec : allSections) {

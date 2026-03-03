@@ -239,10 +239,14 @@ public interface Data {
 
 		@Override
 		public void clear() {
+			var wasEmpty = values.isEmpty() && sections.isEmpty() && comments.isEmpty() && keyComments.isEmpty();;
 			values.clear();
 			keyComments.clear();
 			comments.clear();
-			fireUpdated(this, null, null, null);
+			sections.clear();
+			if(!wasEmpty) {
+				fireUpdated(this, null, null, null);
+			}
 		}
 
 		@Override
@@ -250,7 +254,9 @@ public interface Data {
 			var was = values.get(key);
             var removed = values.remove(key) != null;
             keyComments.remove(key);
-			fireUpdated(this, key, was, null);
+            if(removed) {
+            	fireUpdated(this, key, was, null);
+            }
             return removed;
         }
 
@@ -299,42 +305,54 @@ public interface Data {
 		@Override
         public void putAll(String key, String... values) {
             var was = this.values.put(key, nullCheck(values));
-			fireUpdated(this, key, was, values);
+			if(!Arrays.equals(was, values)) {
+				fireUpdated(this, key, was, values);
+			}
         }
 
         @Override
         public void putAll(String key, int... values) {
             var sval = nullCheck(IntStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @Override
         public void putAll(String key, short... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @Override
         public void putAll(String key, long... values) {
             var sval = nullCheck(LongStream.of(values).boxed().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @Override
         public void putAll(String key, float... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @Override
         public void putAll(String key, double... values) {
             var sval = nullCheck(arrayToList(values).stream().map(i -> i.toString()).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @Override
@@ -343,7 +361,9 @@ public interface Data {
                 return i.toString();
             }).toArray((s) -> new String[s]));
 			var was = this.values.put(key, sval);
-			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
         }
 
         @SuppressWarnings("unchecked")
@@ -353,7 +373,9 @@ public interface Data {
                  return i.toString();
              }).toArray((s) -> new String[s]));
  			var was = this.values.put(key, sval);
- 			fireUpdated(this, key, was, sval);
+			if(!Arrays.equals(was, sval)) {
+				fireUpdated(this, key, was, sval);
+			}
 		}
 
 		@Override
