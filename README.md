@@ -386,6 +386,11 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.10
+
+ * Schema facades now materialize sections when multiplicity requires them (including required child keys/sections).
+ * Schema keys with no default values now return an empty array from `getAllOr(...)` instead of being treated as missing.
+
 ### 0.6.9
 
  * Update events were being fired if the values didn't actually change.

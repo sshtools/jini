@@ -388,6 +388,26 @@ public class INISchema {
 		}
 
 		private boolean shouldWrapSection(SectionDescriptor sec) {
+			/* Required schema sections must always exist in facade output, even when
+			 * all child keys currently resolve to empty values. */
+			if(sec.arity().required()) {
+				return true;
+			}
+
+			/* Optional sections still need to materialize when they define required
+			 * children, so callers can obtain the section and then observe empty
+			 * arrays for unset keys. */
+			for(var k : sec.allKeys()) {
+				if(k.multiplicity().required()) {
+					return true;
+				}
+			}
+			for(var s : sec.sections()) {
+				if(s.arity().required()) {
+					return true;
+				}
+			}
+
 			boolean haveValue;
 			if(sec.multiplicity.once()) {
 				haveValue = false;

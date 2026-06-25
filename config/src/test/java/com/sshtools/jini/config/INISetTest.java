@@ -18,6 +18,7 @@ package com.sshtools.jini.config;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,6 +73,19 @@ public class INISetTest {
 		assertEquals(true, k1v);
     	var k2v = sec.get("key2");
 		assertEquals("Some value",  k2v);
+	}
+
+    @Test
+    public void testFacadeObtainSectionWithNoDefaultValues() throws Exception {
+    	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithNoDefaultValues.schema.ini");
+    	var set = testSet(schm);
+		var facade = set.document();
+		var sec = facade.section("emptySec");		
+		var k1All = sec.getAllOr("key1");
+		assertTrue(k1All.isPresent());
+		assertEquals(0, k1All.get().length);
+    	var k1v = sec.getOr("key1");
+		assertEquals(true, k1v.isEmpty());
 	}
 
     @Test
