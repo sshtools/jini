@@ -386,6 +386,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.11
+
+ * New builder option for `INISet`, `withAppPathResolver()`, allowing better customisation of where configuration files are resolved to.
+
 ### 0.6.10
 
  * Schema facades now materialize sections when multiplicity requires them (including required child keys/sections).

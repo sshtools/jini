@@ -39,6 +39,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -338,12 +339,17 @@ public final class INISet implements Closeable {
 		private CreateDefaultsMode createDefaults = CreateDefaultsMode.NONE;
 		private Optional<Supplier<INIReader.Builder>> readerFactory = Optional.empty();
         private Optional<Supplier<INIWriter.Builder>> writerFactory = Optional.empty();
-
 		private final String name;
 		public boolean closeDefaultIniStream;
+		private Optional<BiFunction<Path, String, Path>> appPathResolver = Optional.empty();
 
 		public Builder(String name) {
 			this.name = name;
+		}
+		
+		public Builder withAppPathResolver(BiFunction<Path, String, Path> appPathResolver) {
+			this.appPathResolver = Optional.of(appPathResolver);
+			return this;
 		}
 		
 		public Builder withReaderFactory(Supplier<INIReader.Builder> readerFactory) {
@@ -567,7 +573,8 @@ public final class INISet implements Closeable {
 	private final boolean dropInDirectories;
     private final Optional<Supplier<INIReader.Builder>> readerFactory;
     private final Optional<Supplier<INIWriter.Builder>> writerFactory;
-	private CreateDefaultsMode createDefaults;
+	private final CreateDefaultsMode createDefaults;
+	private final Optional<BiFunction<Path, String, Path>> appPathResolver;
 
 	private INISet(Builder builder) {
 	    this.readerFactory = builder.readerFactory;
@@ -600,6 +607,7 @@ public final class INISet implements Closeable {
 		};
 		
 		this.app = builder.app.orElse(DEFAULT_APP_NAME);
+		this.appPathResolver = builder.appPathResolver;
 		this.paths = Collections.unmodifiableMap(new HashMap<>(builder.paths));
 		this.name = builder.name;
 		this.scopes = builder.scopes.isEmpty() 
@@ -740,11 +748,14 @@ public final class INISet implements Closeable {
 
 	public Path appPathForScope(Scope scope) {
 		var root = rootPathForScope(scope);
-		if (!isLinux() && !isMacOs() && !isWindows() && scope == Scope.USER) {
-			return root.resolve("." + app);
-		} else {
-			return root.resolve(app);
-		}
+		return appPathResolver.map(resolver -> resolver.apply(root, app)).orElseGet(() -> {
+			if (!isLinux() && !isMacOs() && !isWindows() && scope == Scope.USER) {
+				return root.resolve("." + app);
+			} else {
+				return root.resolve(app);
+			}
+		});
+		
 	}
 
 	@Override
