@@ -51,7 +51,7 @@ public final class Interpolation {
 	public static Interpolator systemProperties()  {
 		return (data, k) -> {
 			if(k.startsWith("sys:")) {
-				return System.getProperty(k.substring(4));
+				return resolveWithOptionalDefault(k.substring(4), System::getProperty);
 			}
 			else
 				return null;
@@ -61,11 +61,24 @@ public final class Interpolation {
 	public static Interpolator environment()  {
 		return (data, k) -> {
 			if(k.startsWith("env:")) {
-				return System.getenv(k.substring(4));
+				return resolveWithOptionalDefault(k.substring(4), System::getenv);
 			}
 			else
 				return null;
 		};
+	}
+
+	private static String resolveWithOptionalDefault(String keyWithOptionalDefault,
+			java.util.function.Function<String, String> resolver) {
+		var idx = keyWithOptionalDefault.indexOf(":-");
+		if(idx == -1) {
+			return resolver.apply(keyWithOptionalDefault);
+		}
+
+		var key = keyWithOptionalDefault.substring(0, idx);
+		var defaultValue = keyWithOptionalDefault.substring(idx + 2);
+		var value = resolver.apply(key);
+		return value == null ? defaultValue : value;
 	}
 	
 	public static Interpolator self()  {

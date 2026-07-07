@@ -49,6 +49,23 @@ public final class InterpolationTest {
 					environment()));
     }
 
+    @Test
+    public void testInterpolateEnvDefaultWhenMissing() throws Exception {
+        Assertions.assertEquals("This text, fallback, should be replaced",
+            Interpolation.str(null, "This text, ${env:JINI_TEST_MISSING_ENV_VAR_8D03FBE4:-fallback}, should be replaced",
+                environment()));
+    }
+
+    @Test
+    public void testInterpolateEnvDefaultWhenPresent() throws Exception {
+        var homeVar = getHomeVar();
+
+        Assertions.assertEquals(
+            "This text, XX, should be replaced".replace("XX", System.getenv(homeVar)),
+            Interpolation.str(null, "This text, ${env:" + homeVar + ":-fallback}, should be replaced",
+                environment()));
+    }
+
 	private String getHomeVar() {
 		/* Windows doesn't have HOME envar, but does have a HOMEPATH */
     	var home = System.getenv("HOME");
@@ -73,6 +90,36 @@ public final class InterpolationTest {
 						systemProperties(),
 						environment()
 					)));
+    }
+
+    @Test
+    public void testInterpolateSystemPropertyDefaultWhenMissing() throws Exception {
+        var testProperty = "jini.test.missing.system.property.8d03fbe4";
+        System.clearProperty(testProperty);
+
+        Assertions.assertEquals("This text, fallback, should be replaced",
+            Interpolation.str(null, "This text, ${sys:" + testProperty + ":-fallback}, should be replaced",
+                systemProperties()));
+    }
+
+    @Test
+    public void testInterpolateSystemPropertyDefaultWhenPresent() throws Exception {
+        var testProperty = "jini.test.system.property.8d03fbe4";
+        var previous = System.getProperty(testProperty);
+        try {
+            System.setProperty(testProperty, "actual");
+            Assertions.assertEquals("This text, actual, should be replaced",
+                Interpolation.str(null, "This text, ${sys:" + testProperty + ":-fallback}, should be replaced",
+                    systemProperties()));
+        }
+        finally {
+            if(previous == null) {
+                System.clearProperty(testProperty);
+            }
+            else {
+                System.setProperty(testProperty, previous);
+            }
+        }
     }
     
     @Test
