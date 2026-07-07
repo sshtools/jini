@@ -245,8 +245,13 @@ public final class INISet implements Closeable {
 					
 					if(sec.parentOr().isPresent()) {
 						int index = sec.index();
-						Section allSec = wtrblDoc.allSections(thisSectionPath)[index];
-						task.accept(allSec);
+						var allSecs = wtrblDoc.allSectionsOr(thisSectionPath).orElseGet(() -> new Section[0]);
+						if(index < allSecs.length) {
+							task.accept(allSecs[index]);
+						}
+						else {
+							task.accept(wtrblDoc.obtainSection(thisSectionPath));
+						}
 					}
 					else {
 						task.accept(wtrblDoc.obtainSection(thisSectionPath));
@@ -659,10 +664,19 @@ public final class INISet implements Closeable {
 	}
 
 	public void maybeWriteDefaults(Scope scope) {
+		var iniFile = appPathForScope(scope).resolve(name + extension);
 		if(createDefaults == CreateDefaultsMode.INI)
-			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + extension));
-		else
-			schema().maybeWriteDefaults(appPathForScope(scope).resolve(name + ".sample" + extension));
+			schema().maybeWriteDefaults(iniFile);
+		else {
+			var sampleFile = appPathForScope(scope).resolve(name + ".sample" + extension);
+			if(createDefaults == CreateDefaultsMode.SAMPLE) {
+				try {
+					Files.deleteIfExists(sampleFile);
+				} catch (IOException e) {
+				}
+			}
+			schema().maybeWriteDefaults(sampleFile);
+		}
 	}
 	
 	public String app() {

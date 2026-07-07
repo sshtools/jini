@@ -386,6 +386,12 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.12
+
+ * `INISet` might trigger needless writes (and create empty sections) when accessing sections that have a schema definition, but no non-default value keys.
+ * String interpolation for `${env:MY_VARIABLE}` and `${sys:my.properties}` now support default values, e.g. `${env:MY_VARIABLE:-my_default)`.
+ * When `CreateDefaultsMode.SAMPLE` is in use, then always update the sample file.
+
 ### 0.6.11
 
  * New builder option for `INISet`, `withAppPathResolver()`, allowing better customisation of where configuration files are resolved to.

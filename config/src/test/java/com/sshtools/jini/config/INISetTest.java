@@ -76,6 +76,18 @@ public class INISetTest {
 	}
 
     @Test
+    public void testFacadeObtainSectionWithSomeDefaultValues() throws Exception {
+    	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithSomeDefaultValues.schema.ini");
+    	var set = testSet(schm);
+		var facade = set.document();
+		var sec = facade.section("section");		
+    	var k1v = sec.getBoolean("key1");
+		assertEquals(true, k1v);
+    	var k2v = sec.get("key2");
+		assertEquals("Some value",  k2v);
+	}
+
+    @Test
     public void testFacadeObtainSectionWithNoDefaultValues() throws Exception {
     	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithNoDefaultValues.schema.ini");
     	var set = testSet(schm);
