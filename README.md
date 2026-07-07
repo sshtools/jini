@@ -386,6 +386,10 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.14
+
+ * Regression from 0.6.13, value updates not always fired for facade sections. 
+
 ### 0.6.13
 
  * `INISchema` facade sections defined only by schema are now virtualized without writing empty sections/files to disk.

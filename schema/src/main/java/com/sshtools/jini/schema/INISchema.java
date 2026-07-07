@@ -388,11 +388,10 @@ public class INISchema {
 		}
 
 		private Section virtualSection(String key) {
-			/* Build a detached section so schema lookups never mutate the real document. */
-			var virtualDoc = INI.create();
+			/* Keep schema-only sections attached to the live facade document so update
+			 * listeners fire when reloads merge values into the same section instance. */
 			var fullPath = INI.merge(key, path());
-			virtualDoc.create(fullPath);
-			return virtualDoc.section(fullPath);
+			return delegate.document().obtainSection(fullPath);
 		}
 
 		private boolean shouldWrapSection(SectionDescriptor sec) {
