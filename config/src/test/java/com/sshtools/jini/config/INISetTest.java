@@ -76,6 +76,20 @@ public class INISetTest {
 	}
 
     @Test
+    public void testEmptySectionsNotGettingCreated() throws Exception {
+    	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithSomeDefaultValues.schema.ini");
+    	var set = testSet(schm);
+		var facade = set.document();
+		
+		assertEquals(0, Files.list(globalSets.resolve("jini")).count());
+		assertEquals(0, Files.list(userSets.resolve("jini")).count());
+		facade.section("section");		
+		Thread.sleep(10000);
+		assertEquals(0, Files.list(globalSets.resolve("jini")).count());
+		assertEquals(0, Files.list(userSets.resolve("jini")).count());
+	}
+
+    @Test
     public void testFacadeObtainSectionWithSomeDefaultValues() throws Exception {
     	var schm = INISchema.fromClass(INISetTest.class, "INISetTest.testFacadeObtainSectionWithSomeDefaultValues.schema.ini");
     	var set = testSet(schm);

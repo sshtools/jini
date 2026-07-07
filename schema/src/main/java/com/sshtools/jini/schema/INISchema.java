@@ -384,7 +384,15 @@ public class INISchema {
 			boolean haveValue = shouldWrapSection(sec);
 			
 			if(haveValue && !mgr.containsKey(sec.key()))
-				mgr.put(sec.key(), new Section[] { wrapSection(delegate.create(sec.key())) });
+				mgr.put(sec.key(), new Section[] { wrapSection(virtualSection(sec.key())) });
+		}
+
+		private Section virtualSection(String key) {
+			/* Build a detached section so schema lookups never mutate the real document. */
+			var virtualDoc = INI.create();
+			var fullPath = INI.merge(key, path());
+			virtualDoc.create(fullPath);
+			return virtualDoc.section(fullPath);
 		}
 
 		private boolean shouldWrapSection(SectionDescriptor sec) {

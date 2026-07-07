@@ -386,6 +386,11 @@ Thanks to others who have contributed to Jini.
 
 ## Changes
 
+### 0.6.13
+
+ * `INISchema` facade sections defined only by schema are now virtualized without writing empty sections/files to disk.
+ * Accessing schema-defined sections no longer intermittently materializes duplicate backing sections.
+
 ### 0.6.12
 
  * `INISet` might trigger needless writes (and create empty sections) when accessing sections that have a schema definition, but no non-default value keys.
